@@ -25,20 +25,29 @@ function executarAnalise() {
     // 3. Cálculo de Probabilidades (Poisson)
     const poisson = (lambda, k) => (Math.exp(-lambda) * Math.pow(lambda, k)) / [1, 1, 2, 6, 24, 120][k];
 
-    let pCasa = 0, pFora = 0, pEmpate = 0;
+    let pCasa = 0, pFora = 0, pEmpate = 0, pOver = 0;
 
     const probCasaZero = poisson(lambdaCasa, 0);
     const probForaZero = poisson(lambdaFora, 0);
 
+    // Loop Único para 1X2 e Over 2.5 (Matriz 6x6)
     for (let i = 0; i < 6; i++) {
         for (let j = 0; j < 6; j++) {
             const probPlacar = poisson(lambdaCasa, i) * poisson(lambdaFora, j);
+
+            // Lógica 1X2
             if (i > j) pCasa += probPlacar;
             else if (i < j) pFora += probPlacar;
             else pEmpate += probPlacar;
+
+            // Lógica Over 2.5 (Soma de gols > 2.5)
+            if ((i + j) > 2.5) {
+                pOver += probPlacar;
+            }
         }
     }
 
+    // Cálculo BTTS (Ambas Marcam)
     const pBTTS = (1 - probCasaZero - probForaZero + (probCasaZero * probForaZero));
 
     // 4. Cálculo de Valor (+EV) e Kelly COM TRAVA DE 5%
@@ -47,7 +56,7 @@ function executarAnalise() {
         const b = odd - 1;
         const kellyBruto = ((b * prob) - (1 - prob)) / b;
 
-        // Ajuste para 0.10 (Kelly 1/10) para ser mais equilibrado que o 0.25 anterior
+        // Ajuste para 0.10 (Kelly 1/10) para ser mais equilibrado
         let stakeSugerida = kellyBruto * 0.10 * 100;
 
         // Limite máximo de 5% da banca
@@ -56,16 +65,34 @@ function executarAnalise() {
         return kellyBruto > 0 ? stakeSugerida.toFixed(1) : 0;
     };
 
+    // Cálculos de Valor Esperado (EV)
     const evCasa = (pCasa * mercado.casa);
     const evBTTS = (pBTTS * mercado.btts);
+    const evOver = (pOver * mercado.over);
 
+    // Cálculos de Stake (Kelly)
     const kellyCasa = calcularKelly(pCasa, mercado.casa);
     const kellyBTTS = calcularKelly(pBTTS, mercado.btts);
+    const kellyOver = calcularKelly(pOver, mercado.over);
 
-    exibirResultados(pCasa * 100, pEmpate * 100, pFora * 100, pBTTS * 100, evCasa, evBTTS, kellyCasa, kellyBTTS, lambdaCasa + lambdaFora);
+    // 5. Envio dos resultados para a função de exibição (Ordem correta dos argumentos)
+    exibirResultados(
+        pCasa * 100,
+        pEmpate * 100,
+        pFora * 100,
+        pBTTS * 100,
+        pOver * 100,
+        evCasa,
+        evBTTS,
+        evOver,
+        kellyCasa,
+        kellyBTTS,
+        kellyOver,
+        lambdaCasa + lambdaFora
+    );
 }
 
-function exibirResultados(pC, pE, pF, pBTTS, evC, evB, kellyC, kellyB, totalGols) {
+function exibirResultados(pC, pE, pF, pBTTS, pOver, evC, evB, evO, kellyC, kellyB, kellyO, totalGols) {
     const painel = document.getElementById('painelResultado');
     document.getElementById('resultado').style.display = 'block';
 
@@ -75,29 +102,37 @@ function exibirResultados(pC, pE, pF, pBTTS, evC, evB, kellyC, kellyB, totalGols
             <span>🤝 Empate: ${pE.toFixed(1)}%</span>
             <span>🚀 Fora: ${pF.toFixed(1)}%</span>
         </div>
-        <div style="text-align: center; color: #1565c0; font-weight: bold; margin-bottom: 15px;">
-            ⚽ Ambas Marcam (BTTS): ${pBTTS.toFixed(1)}%
+        <div style="display: flex; justify-content: space-around; margin-bottom: 15px; font-size: 0.85em;">
+            <span style="color: #1565c0;">⚽ BTTS: <b>${pBTTS.toFixed(1)}%</b></span>
+            <span style="color: #e65100;">📈 Over 2.5: <b>${pOver.toFixed(1)}%</b></span>
         </div>
     `;
 
-    // Sugestão para Match Odds (Filtro ajustado para 1.02)
+    // Valor em Casa
     if (evC > 1.02) {
         html += `<div style="background:#e8f5e9; padding:12px; border-radius:8px; border:2px solid #2e7d32; margin-bottom: 10px;">
             <b style="color:#2e7d32;">🔥 VALOR EM CASA (EV: ${evC.toFixed(2)})</b><br>
-            Stake Sugerida: <b>${kellyC}%</b> ${kellyC == 5.0 ? "(Limite)" : ""}
+            Stake: <b>${kellyC}%</b>
         </div>`;
     }
 
-    // Sugestão para BTTS (Filtro ajustado para 1.02)
+    // Valor em BTTS
     if (evB > 1.02) {
-        html += `<div style="background:#e3f2fd; padding:12px; border-radius:8px; border:2px solid #1565c0;">
+        html += `<div style="background:#e3f2fd; padding:12px; border-radius:8px; border:2px solid #1565c0; margin-bottom: 10px;">
             <b style="color:#1565c0;">💎 VALOR EM AMBAS MARCAM (EV: ${evB.toFixed(2)})</b><br>
-            Stake Sugerida: <b>${kellyB}%</b> ${kellyB == 5.0 ? "(Limite)" : ""}
+            Stake: <b>${kellyB}%</b>
         </div>`;
     }
 
-    // Mensagem caso nenhum mercado atinja a margem de 2%
-    if (evC <= 1.02 && evB <= 1.02) {
+    // Valor em OVER 2.5 (NOVO)
+    if (evO > 1.02) {
+        html += `<div style="background:#fff3e0; padding:12px; border-radius:8px; border:2px solid #ef6c00; margin-bottom: 10px;">
+            <b style="color:#e65100;">🚀 VALOR EM OVER 2.5 (EV: ${evO.toFixed(2)})</b><br>
+            Stake: <b>${kellyO}%</b>
+        </div>`;
+    }
+
+    if (evC <= 1.02 && evB <= 1.02 && evO <= 1.02) {
         html += `<div style="background:#ffebee; padding:12px; border-radius:8px; text-align:center;">⚠️ Sem valor claro (Margem < 2%).</div>`;
     }
 
@@ -105,6 +140,7 @@ function exibirResultados(pC, pE, pF, pBTTS, evC, evB, kellyC, kellyB, totalGols
 
     painel.innerHTML = html;
 }
+
 
 
 
@@ -118,6 +154,7 @@ function preencherExemplo() {
     document.getElementById('oddFora').value = "3.80";
     document.getElementById('oddOver').value = "1.90";
     document.getElementById('oddUnder').value = "1.90";
+    document.getElementById('oddBTTS').value = "1.72";
 
     // Dados Time Casa (Média de 1.4 gols marcados)
     document.getElementById('golsMCasa').value = "2,1,1,0,3";
