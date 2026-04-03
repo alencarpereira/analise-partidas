@@ -141,11 +141,6 @@ function exibirResultados(pC, pE, pF, pBTTS, pOver, evC, evB, evO, kellyC, kelly
     painel.innerHTML = html;
 }
 
-
-
-
-
-
 // Função para preencher com um cenário de exemplo (ex: Flamengo vs Palmeiras)
 function preencherExemplo() {
     // Odds do Mercado
