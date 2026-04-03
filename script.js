@@ -6,7 +6,7 @@ function executarAnalise() {
         empate: parseFloat(document.getElementById('oddEmpate').value),
         fora: parseFloat(document.getElementById('oddFora').value),
         over: parseFloat(document.getElementById('oddOver').value),
-        btts: parseFloat(document.getElementById('oddBTTS').value) // Adicionado BTTS
+        btts: parseFloat(document.getElementById('oddBTTS').value)
     };
 
     // 2. Médias de Gols
@@ -27,7 +27,6 @@ function executarAnalise() {
 
     let pCasa = 0, pFora = 0, pEmpate = 0;
 
-    // Probabilidade de cada time NÃO marcar (0 gols)
     const probCasaZero = poisson(lambdaCasa, 0);
     const probForaZero = poisson(lambdaFora, 0);
 
@@ -40,18 +39,25 @@ function executarAnalise() {
         }
     }
 
-    // Cálculo BTTS (Ambas Marcam): 1 - (Chance Casa 0) - (Chance Fora 0) + (Chance 0x0)
     const pBTTS = (1 - probCasaZero - probForaZero + (probCasaZero * probForaZero));
 
-    // 4. Cálculo de Valor (+EV) e Kelly
+    // 4. Cálculo de Valor (+EV) e Kelly COM TRAVA DE 5%
     const calcularKelly = (prob, odd) => {
+        if (!odd || odd <= 1) return 0;
         const b = odd - 1;
-        const kelly = ((b * prob) - (1 - prob)) / b;
-        return kelly > 0 ? (kelly * 0.25 * 100).toFixed(1) : 0;
+        const kellyBruto = ((b * prob) - (1 - prob)) / b;
+
+        // Ajuste para 0.10 (Kelly 1/10) para ser mais equilibrado que o 0.25 anterior
+        let stakeSugerida = kellyBruto * 0.10 * 100;
+
+        // Limite máximo de 5% da banca
+        if (stakeSugerida > 5.0) stakeSugerida = 5.0;
+
+        return kellyBruto > 0 ? stakeSugerida.toFixed(1) : 0;
     };
 
     const evCasa = (pCasa * mercado.casa);
-    const evBTTS = (pBTTS * mercado.btts); // EV do BTTS
+    const evBTTS = (pBTTS * mercado.btts);
 
     const kellyCasa = calcularKelly(pCasa, mercado.casa);
     const kellyBTTS = calcularKelly(pBTTS, mercado.btts);
@@ -74,30 +80,33 @@ function exibirResultados(pC, pE, pF, pBTTS, evC, evB, kellyC, kellyB, totalGols
         </div>
     `;
 
-    // Sugestão para Match Odds
-    if (evC > 1.05) {
+    // Sugestão para Match Odds (Filtro ajustado para 1.02)
+    if (evC > 1.02) {
         html += `<div style="background:#e8f5e9; padding:12px; border-radius:8px; border:2px solid #2e7d32; margin-bottom: 10px;">
-            <b style="color:#2e7d32;">🔥 VALOR EM CASA</b><br>
-            Stake Sugerida: <b>${kellyC}%</b>
+            <b style="color:#2e7d32;">🔥 VALOR EM CASA (EV: ${evC.toFixed(2)})</b><br>
+            Stake Sugerida: <b>${kellyC}%</b> ${kellyC == 5.0 ? "(Limite)" : ""}
         </div>`;
     }
 
-    // Sugestão para BTTS
-    if (evB > 1.05) {
+    // Sugestão para BTTS (Filtro ajustado para 1.02)
+    if (evB > 1.02) {
         html += `<div style="background:#e3f2fd; padding:12px; border-radius:8px; border:2px solid #1565c0;">
-            <b style="color:#1565c0;">💎 VALOR EM AMBAS MARCAM</b><br>
-            Stake Sugerida: <b>${kellyB}%</b>
+            <b style="color:#1565c0;">💎 VALOR EM AMBAS MARCAM (EV: ${evB.toFixed(2)})</b><br>
+            Stake Sugerida: <b>${kellyB}%</b> ${kellyB == 5.0 ? "(Limite)" : ""}
         </div>`;
     }
 
-    if (evC <= 1.05 && evB <= 1.05) {
-        html += `<div style="background:#ffebee; padding:12px; border-radius:8px; text-align:center;">⚠️ Sem valor claro no mercado.</div>`;
+    // Mensagem caso nenhum mercado atinja a margem de 2%
+    if (evC <= 1.02 && evB <= 1.02) {
+        html += `<div style="background:#ffebee; padding:12px; border-radius:8px; text-align:center;">⚠️ Sem valor claro (Margem < 2%).</div>`;
     }
 
     html += `<p style="font-size: 0.8em; margin-top: 10px; color: #666; text-align:center;">Expectativa Total: <b>${totalGols.toFixed(2)} gols</b></p>`;
 
     painel.innerHTML = html;
 }
+
+
 
 
 
@@ -140,6 +149,7 @@ function limparCampos() {
 
     console.log("Formulário limpo!");
 }
+
 
 
 
