@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FutAnalytica - Probabilidade & Valor</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+    <div class="container">
+        <header style="text-align: center; margin-bottom: 30px;">
+            <h2>⚽ Central de Inteligência: 1X2 & Gols</h2>
+            <p>Foco em Probabilidade Real vs. Valor do Mercado</p>
+        </header>
+
+        <!-- ENTRADA DE ODDS DO MERCADO (CRUCIAL PARA VALOR) -->
+        <div class="card">
+            <h3>💰 Odds da Casa (Mercado Atual)</h3>
+            <div class="grid">
+                <div class="flex-row">
+                    <div class="input-group">
+                        <label>Casa (1)</label>
+                        <input type="number" id="oddCasa" step="0.01" placeholder="Ex: 2.10">
+                    </div>
+                    <div class="input-group">
+                        <label>Empate (X)</label>
+                        <input type="number" id="oddEmpate" step="0.01" placeholder="Ex: 3.30">
+                    </div>
+                    <div class="input-group">
+                        <label>Fora (2)</label>
+                        <input type="number" id="oddFora" step="0.01" placeholder="Ex: 3.50">
+                    </div>
+                </div>
+                <div class="flex-row">
+                    <div class="input-group">
+                        <label>Over 2.5</label>
+                        <input type="number" id="oddOver" step="0.01" placeholder="Ex: 1.95">
+                    </div>
+                    <div class="input-group">
+                        <label>Under 2.5</label>
+                        <input type="number" id="oddUnder" step="0.01" placeholder="Ex: 1.85">
+                    </div>
+                    <!-- NOVO CAMPO: AMBOS MARCAM -->
+                    <div class="input-group">
+                        <label>BTTS (Sim)</label>
+                        <input type="number" id="oddBTTS" step="0.01" placeholder="Ex: 1.80">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid">
+            <!-- DADOS TIME CASA -->
+            <div class="card">
+                <h3>🏠 Time da Casa</h3>
+                <label>Gols nos últimos 5 jogos (Marcados / Sofridos)</label>
+                <div class="flex-row">
+                    <input type="text" id="golsMCasa" placeholder="Ex: 2,1,0,3,1">
+                    <input type="text" id="golsSCasa" placeholder="Ex: 0,1,1,2,0">
+                </div>
+                <div class="input-group" style="margin-top:15px;">
+                    <label>Poder de Ataque (xG ou Finalizações Médias)</label>
+                    <input type="number" id="forcaAtaqueCasa" step="0.1" placeholder="Ex: 1.8">
+                </div>
+            </div>
+
+            <!-- DADOS TIME FORA -->
+            <div class="card">
+                <h3>🚀 Time de Fora</h3>
+                <label>Gols nos últimos 5 jogos (Marcados / Sofridos)</label>
+                <div class="flex-row">
+                    <input type="text" id="golsMFora" placeholder="Ex: 1,1,2,0,1">
+                    <input type="text" id="golsSFora" placeholder="Ex: 1,2,1,1,3">
+                </div>
+                <div class="input-group" style="margin-top:15px;">
+                    <label>Poder de Ataque (xG ou Finalizações Médias)</label>
+                    <input type="number" id="forcaAtaqueFora" step="0.1" placeholder="Ex: 1.2">
+                </div>
+            </div>
+        </div>
+
+        <!-- CONFRONTO DIRETO & AJUSTES -->
+        <div class="card">
+            <h3>⚖️ Pesos de Ajuste (H2H e Momento)</h3>
+            <div class="grid">
+                <div class="input-group">
+                    <label>H2H - Quem venceu mais os últimos 5?</label>
+                    <select id="pesoH2H" style="width: 100%; padding: 8px;">
+                        <option value="equilibrio">Equilíbrio Total</option>
+                        <option value="casa">Predomínio Casa</option>
+                        <option value="fora">Predomínio Fora</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>Importância do Jogo (Motivação)</label>
+                    <select id="motivacao" style="width: 100%; padding: 8px;">
+                        <option value="1">Normal</option>
+                        <option value="1.2">Decisivo / Final</option>
+                        <option value="0.8">Amistoso / Cumprir Tabela</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <button class="btn-analisar" onclick="executarAnalise()"
+            style="width: 100%; padding: 15px; background: #1a237e; color: white; border: none; border-radius: 8px; font-size: 1.1em; cursor: pointer;">
+            CALCULAR PROBABILIDADE & VALOR
+        </button>
+        <br>
+        <br>
+
+        <div class="flex-row" style="margin-bottom: 15px;">
+            <button onclick="preencherExemplo()"
+                style="flex: 1; padding: 10px; background: #546e7a; color: white; border: none; border-radius: 8px; cursor: pointer;">
+                🧪 Preencher Exemplo
+            </button>
+            <button onclick="limparCampos()"
+                style="flex: 1; padding: 10px; background: #d32f2f; color: white; border: none; border-radius: 8px; cursor: pointer;">
+                🧹 Limpar Tudo
+            </button>
+        </div>
+
+
+        <!-- RESULTADO DINÂMICO -->
+        <div id="resultado" class="card" style="display: none; border-left: 5px solid #00c853;">
+            <h3>📊 Diagnóstico Final</h3>
+            <div id="painelResultado">
+                <!-- Aqui o JS vai injetar os cálculos -->
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>

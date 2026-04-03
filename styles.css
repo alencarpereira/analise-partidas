@@ -1,0 +1,105 @@
+    :root {
+        --primary: #1a237e;
+        --accent: #00c853;
+        --warning: #ffd600;
+        --bg: #f4f7f6;
+    }
+
+    body {
+        font-family: 'Segoe UI', sans-serif;
+        background: var(--bg);
+        color: #333;
+        margin: 0;
+        padding: 20px;
+    }
+
+    .container {
+        max-width: 1000px;
+        margin: auto;
+    }
+
+    .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+    }
+
+    .card {
+        background: white;
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+    }
+
+    h2,
+    h3 {
+        color: var(--primary);
+        margin-top: 0;
+    }
+
+    .input-group {
+        margin-bottom: 15px;
+    }
+
+    label {
+        display: block;
+        font-size: 0.9em;
+        font-weight: bold;
+        margin-bottom: 5px;
+    }
+
+    input {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        box-sizing: border-box;
+    }
+
+    .btn-analisar {
+        width: 100%;
+        padding: 15px;
+        background: var(--primary);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 1.1em;
+        cursor: pointer;
+        transition: 0.3s;
+    }
+
+    .btn-analisar:hover {
+        background: #283593;
+    }
+
+    .badge-valor {
+        background: var(--accent);
+        color: white;
+        padding: 5px 10px;
+        border-radius: 4px;
+        font-size: 0.8em;
+    }
+
+    .resultado-box {
+        display: none;
+        margin-top: 20px;
+        border-left: 5px solid var(--accent);
+    }
+
+    .flex-row {
+        display: flex;
+        gap: 10px;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+    }
+
+    th {
+        font-size: 0.8em;
+        text-align: left;
+        color: #666;
+    }
