@@ -10,6 +10,14 @@
 
 <body>
 
+    <div id="resumoBanca"
+        style="background: #1a237e; color: white; padding: 15px; border-radius: 8px; margin-top: 20px; display: flex; justify-content: space-around; font-weight: bold; font-size: 1.1em;">
+        <span>💰 Banca Inicial: R$ 100,00</span>
+        <span id="saldoAtual">Saldo Atual: R$ 100,00</span>
+        <span id="lucroTotal">Lucro Total: R$ 0,00</span>
+    </div>
+
+
     <div class="container">
         <header style="text-align: center; margin-bottom: 30px;">
             <h2>⚽ Central de Inteligência: 1X2 & Gols</h2>
@@ -105,33 +113,89 @@
             </div>
         </div>
 
-        <button class="btn-analisar" onclick="executarAnalise()"
-            style="width: 100%; padding: 15px; background: #1a237e; color: white; border: none; border-radius: 8px; font-size: 1.1em; cursor: pointer;">
-            CALCULAR PROBABILIDADE & VALOR
-        </button>
-        <br>
-        <br>
-
-        <div class="flex-row" style="margin-bottom: 15px;">
-            <button onclick="preencherExemplo()"
-                style="flex: 1; padding: 10px; background: #546e7a; color: white; border: none; border-radius: 8px; cursor: pointer;">
-                🧪 Preencher Exemplo
-            </button>
-            <button onclick="limparCampos()"
-                style="flex: 1; padding: 10px; background: #d32f2f; color: white; border: none; border-radius: 8px; cursor: pointer;">
-                🧹 Limpar Tudo
-            </button>
+        <div class="card" style="margin-top: 15px;">
+            <label style="font-weight: bold;">⚔️ Confronto (Times):</label>
+            <input type="text" id="nomeJogo" placeholder="Ex: Flamengo x Vasco"
+                style="width: 100%; padding: 10px; margin-top: 5px; border-radius: 5px; border: 1px solid #ccc;">
         </div>
 
+        <button class="btn-analisar" onclick="executarAnalise()" ...>
 
-        <!-- RESULTADO DINÂMICO -->
-        <div id="resultado" class="card" style="display: none; border-left: 5px solid #00c853;">
-            <h3>📊 Diagnóstico Final</h3>
-            <div id="painelResultado">
-                <!-- Aqui o JS vai injetar os cálculos -->
+
+            <button class="btn-analisar" onclick="executarAnalise()"
+                style="width: 100%; padding: 15px; background: #1a237e; color: white; border: none; border-radius: 8px; font-size: 1.1em; cursor: pointer;">
+                CALCULAR PROBABILIDADE & VALOR
+            </button>
+            <br>
+            <br>
+
+            <div class="flex-row" style="margin-bottom: 15px;">
+                <button onclick="preencherExemplo()"
+                    style="flex: 1; padding: 10px; background: #546e7a; color: white; border: none; border-radius: 8px; cursor: pointer;">
+                    🧪 Preencher Exemplo
+                </button>
+                <button onclick="limparCampos()"
+                    style="flex: 1; padding: 10px; background: #d32f2f; color: white; border: none; border-radius: 8px; cursor: pointer;">
+                    🧹 Limpar Tudo
+                </button>
             </div>
-        </div>
+
+            <!-- RESULTADO DINÂMICO -->
+            <div id="resultado" class="card" style="display: none; border-left: 5px solid #00c853;">
+                <h3>📊 Diagnóstico Final</h3>
+                <div id="painelResultado">
+                    <!-- Aqui o JS vai injetar os cálculos -->
+                </div>
+            </div>
     </div>
+
+    <!-- Onde os resultados aparecem -->
+    <div id="painelResultado"></div>
+
+    <!-- Onde a tabela de histórico vai aparecer -->
+    <!-- Procure este bloco e verifique se o botão "Limpar" e a tabela estão assim -->
+    <div
+        style="margin-top: 40px; overflow-x: auto; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+        <h3 style="color: #1a237e; border-bottom: 2px solid #1a237e; padding-bottom: 5px;">📊 Relatório Geral de Apostas
+        </h3>
+        <table id="tabelaHistorico"
+            style="width:100%; border-collapse: collapse; font-size: 0.7em; font-family: sans-serif;">
+            <thead>
+                <tr style="background:#1a237e; color: white; text-transform: uppercase;">
+                    <th style="padding:10px; border: 1px solid #ccc;">Analise do Time</th>
+                    <th style="border: 1px solid #ccc;">Valor EV</th>
+                    <th style="border: 1px solid #ccc;">Valor Aposta (Odd)</th>
+                    <th style="border: 1px solid #ccc;">Stake Sugerida</th>
+                    <th style="border: 1px solid #ccc;">Casa</th>
+                    <th style="border: 1px solid #ccc;">Empate</th>
+                    <th style="border: 1px solid #ccc;">Fora</th>
+                    <th style="border: 1px solid #ccc;">BTTS</th>
+                    <th style="border: 1px solid #ccc;">Over 2.5</th>
+                    <th style="border: 1px solid #ccc;">Expectativa Gols</th>
+                    <th style="border: 1px solid #ccc;">Aposta Principal</th>
+                    <th style="border: 1px solid #ccc;">Green/Red</th>
+                    <th style="border: 1px solid #ccc;">Perdas/Ganhos</th>
+                    <th style="border: 1px solid #ccc;">Ação</th>
+                </tr>
+            </thead>
+            <tbody id="corpoTabela">
+                <!-- Linhas inseridas pelo JS -->
+            </tbody>
+        </table>
+        <button onclick="limparHistorico()"
+            style="margin-top:15px; color:#d32f2f; background:none; border:1px solid #d32f2f; padding:5px 10px; border-radius:4px; cursor:pointer; font-weight:bold;">
+            🧹 Limpar Todo o Histórico
+        </button>
+
+        <button onclick="exportarCSV()"
+            style="margin-top:10px; background:#2e7d32; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer; font-weight:bold; margin-left: 10px;">
+            📥 Exportar para Excel (CSV)
+        </button>
+
+    </div>
+
+    </div>
+
 
     <script src="script.js"></script>
 </body>

@@ -100,6 +100,37 @@
 
     th {
         font-size: 0.8em;
-        text-align: left;
+        text-align: center;
+        /* Mudei de left para center */
         color: #666;
+        padding: 10px 5px;
+        border-bottom: 2px solid var(--primary);
+    }
+
+
+    /* Ajuste específico para os campos de placar na tabela */
+    input[type=number] {
+        appearance: textfield;
+        -moz-appearance: textfield;
+        /* Para Firefox */
+    }
+
+    input::-webkit-outer-spin-button,
+    input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        /* Remove setas no Chrome/Edge */
+        margin: 0;
+    }
+
+    #corpoTabela input {
+        border: 1px solid #999;
+        background: white;
+        color: #333;
+        font-weight: bold;
+    }
+
+    /* Deixa os botões da tabela com aspecto de "clicáveis" */
+    #corpoTabela button:hover {
+        filter: brightness(1.2);
+        transform: scale(1.05);
     }
