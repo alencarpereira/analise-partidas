@@ -1,5 +1,5 @@
 function executarAnalise() {
-    const bancaTotal = 100;
+    const bancaTotal = 60;
     const getVal = (id) => parseFloat(document.getElementById(id).value) || 0;
 
     const mercado = {
@@ -14,15 +14,22 @@ function executarAnalise() {
         const input = document.getElementById(id).value;
         if (!input) return 0;
         const v = input.split(',').map(Number);
+        if (v.length < 5) return v.reduce((a, b) => a + b, 0) / v.length; // Segurança para menos de 5 jogos
         return (v[0] + v[1] + v[2] + (v[3] * 1.5) + (v[4] * 1.5)) / 6;
     };
 
-    const expGolsCasa = (calcularMediaAjustada('golsMCasa') + getVal('forcaAtaqueCasa')) / 2;
-    const expGolsFora = (calcularMediaAjustada('golsMFora') + getVal('forcaAtaqueFora')) / 2;
+    const mCasa = calcularMediaAjustada('golsMCasa');
+    const sCasa = calcularMediaAjustada('golsSCasa');
+    const mFora = calcularMediaAjustada('golsMFora');
+    const sFora = calcularMediaAjustada('golsSFora');
+
+    const expGolsCasaBase = (mCasa + sFora) / 2;
+    const expGolsForaBase = (mFora + sCasa) / 2;
 
     const fatorMotivacao = getVal('motivacao') || 1;
-    const lambdaCasa = expGolsCasa * fatorMotivacao;
-    const lambdaFora = expGolsFora * fatorMotivacao;
+
+    const lambdaCasa = ((expGolsCasaBase + getVal('forcaAtaqueCasa')) / 2) * fatorMotivacao;
+    const lambdaFora = ((expGolsForaBase + getVal('forcaAtaqueFora')) / 2) * fatorMotivacao;
 
     const poisson = (lambda, k) => (Math.exp(-lambda) * Math.pow(lambda, k)) / [1, 1, 2, 6, 24, 120][k];
 
@@ -114,13 +121,6 @@ function executarAnalise() {
             💾 SALVAR NA TABELA DE RELATÓRIO
         </button>
     `;
-}
-
-function salvarResultado(dados) {
-    let historico = JSON.parse(localStorage.getItem('meuHistoricoApostas')) || [];
-    historico.unshift(dados);
-    localStorage.setItem('meuHistoricoApostas', JSON.stringify(historico));
-    renderizarTabela();
 }
 
 function limparHistorico() {
@@ -386,29 +386,31 @@ function exportarCSV() {
 // Função para preencher com um cenário de exemplo (ex: Flamengo vs Palmeiras)
 function preencherExemplo() {
     // Odds do Mercado
-    document.getElementById('oddCasa').value = "2.05";
-    document.getElementById('oddEmpate').value = "3.40";
-    document.getElementById('oddFora').value = "3.80";
-    document.getElementById('oddOver').value = "1.90";
-    document.getElementById('oddUnder').value = "1.90";
-    document.getElementById('oddBTTS').value = "1.72";
+    document.getElementById('oddCasa').value = "2.10";
+    document.getElementById('oddEmpate').value = "3.30";
+    document.getElementById('oddFora').value = "3.50";
+    document.getElementById('oddOver').value = "1.95";
+    document.getElementById('oddBTTS').value = "1.80";
 
-    // Dados Time Casa (Média de 1.4 gols marcados)
-    document.getElementById('golsMCasa').value = "2,1,1,0,3";
-    document.getElementById('golsSCasa').value = "0,1,1,2,0";
-    document.getElementById('forcaAtaqueCasa').value = "1.8";
+    // Dados Time Casa (Ex: Flamengo)
+    // Marcou bastante, mas a defesa é sólida (sofreu pouco)
+    document.getElementById('golsMCasa').value = "2,1,3,1,2";
+    document.getElementById('golsSCasa').value = "0,1,0,0,1";
+    document.getElementById('forcaAtaqueCasa').value = "1.5";
 
-    // Dados Time Fora (Média de 1.0 gol marcado)
-    document.getElementById('golsMFora').value = "1,1,2,0,1";
-    document.getElementById('golsSFora').value = "1,2,1,1,3";
-    document.getElementById('forcaAtaqueFora').value = "1.2";
+    // Dados Time Fora (Ex: Vasco)
+    // Ataque mediano e defesa que costuma vazar
+    document.getElementById('golsMFora').value = "1,0,2,1,1";
+    document.getElementById('golsSFora').value = "2,1,2,3,1";
+    document.getElementById('forcaAtaqueFora').value = "1.0";
 
     // Ajustes
-    document.getElementById('pesoH2H').value = "casa";
-    document.getElementById('motivacao').value = "1.2"; // Jogo decisivo
+    document.getElementById('motivacao').value = "1";
+    document.getElementById('nomeJogo').value = "Flamengo x Vasco";
 
-    console.log("Dados de exemplo carregados!");
+    console.log("Exemplo de confronto real carregado!");
 }
+
 
 // Função para limpar todos os campos
 function limparCampos() {
