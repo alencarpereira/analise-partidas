@@ -125,41 +125,54 @@
         </div>
 
         <div class="grid">
-            <!-- TIME CASA -->
+
+            <!-- DADOS TIME CASA -->
             <div class="card">
                 <h3>🏠 Time da Casa</h3>
+
+                <label>Gols últimos 5 jogos (Marcados / Sofridos)</label>
+                <div class="flex-row">
+                    <input type="text" id="golsMCasa" placeholder="Ex:2,1,0,3,1">
+                    <input type="text" id="golsSCasa" placeholder="Ex:0,1,1,2,0">
+                </div>
+
+                <div class="input-group" style="margin-top:15px;">
+                    <label>Ataque Casa (xG ou média gols marcados)</label>
+                    <input type="number" id="ataqueCasa" step="0.1" min="0" max="5" placeholder="Ex:1.8">
+                </div>
+
                 <div class="input-group">
-                    <label>Gols MARCADOS (Últimos 5 em casa)</label>
-                    <input type="text" id="golsMCasa" placeholder="Ex: 2,1,0,3,1">
+                    <label>Defesa Casa (xG sofrido ou média gols sofridos)</label>
+                    <input type="number" id="defesaCasa" step="0.1" placeholder="Ex:1.2">
                 </div>
-                <div class="input-group" style="margin-top:10px;">
-                    <label>Gols SOFRIDOS (Últimos 5 em casa)</label>
-                    <input type="text" id="golsSCasa" placeholder="Ex: 0,1,1,2,0">
-                </div>
-                <div class="input-group" style="margin-top:10px;">
-                    <label>Força de Ataque (xG)</label>
-                    <input type="number" id="forcaAtaqueCasa" step="0.1" value="1.0">
-                </div>
+
             </div>
 
-            <!-- TIME FORA -->
+
+            <!-- DADOS TIME FORA -->
             <div class="card">
                 <h3>🚀 Time de Fora</h3>
-                <div class="input-group">
-                    <label>Gols MARCADOS (Últimos 5 fora)</label>
-                    <input type="text" id="golsMFora" placeholder="Ex: 1,1,2,0,1">
-                </div>
-                <div class="input-group" style="margin-top:10px;">
-                    <label>Gols SOFRIDOS (Últimos 5 fora)</label>
-                    <input type="text" id="golsSFora" placeholder="Ex: 1,2,1,1,3">
-                </div>
-                <div class="input-group" style="margin-top:10px;">
-                    <label>Força de Ataque (xG)</label>
-                    <input type="number" id="forcaAtaqueFora" step="0.1" value="1.0">
-                </div>
-            </div>
-        </div>
 
+                <label>Gols últimos 5 jogos (Marcados / Sofridos)</label>
+                <div class="flex-row">
+                    <input type="text" id="golsMFora" placeholder="Ex:1,1,2,0,1">
+                    <input type="text" id="golsSFora" placeholder="Ex:1,2,1,1,3">
+                </div>
+
+                <div class="input-group" style="margin-top:15px;">
+                    <label>Ataque Fora (xG ou média gols marcados)</label>
+                    <input type="number" id="ataqueFora" step="0.1" min="0" max="5" placeholder="Ex:1.4">
+                </div>
+
+                <div class="input-group">
+                    <label>Defesa Fora (xG sofrido ou média gols sofridos)</label>
+                    <input type="number" id="defesaFora" step="0.1" min="0" max="5" placeholder="Ex:1.6">
+                </div>
+
+            </div>
+
+        </div>
+        <!-- CONFRONTO DIRETO & AJUSTES -->
         <div class="card">
             <div class="grid">
                 <div class="input-group">
@@ -177,22 +190,46 @@
             </div>
         </div>
 
-        <button class="btn-analisar" onclick="executarAnalise()">CALCULAR PROBABILIDADE & VALOR</button>
+        <div class="card">
+            <h3>⚙️ Ajustes do Modelo</h3>
 
-        <div class="flex-row" style="margin-top: 15px;">
-            <button onclick="preencherExemplo()"
-                style="flex: 1; padding: 10px; background: #546e7a; color: white; border: none; border-radius: 8px; cursor: pointer;">🧪
-                Exemplo</button>
-            <button onclick="limparCampos()"
-                style="flex: 1; padding: 10px; background: #d32f2f; color: white; border: none; border-radius: 8px; cursor: pointer;">🧹
-                Limpar</button>
+            <div class="input-group">
+                <label>Média de gols da liga</label>
+                <input type="number" id="mediaLiga" step="0.1" min="1" max="5" value="2.5" placeholder="Ex: 2.6">
+            </div>
+
+            <small style="color:#666;">
+                Média de gols da competição. Exemplos:<br>
+                Brasileirão ≈ 2.4 | Premier League ≈ 2.8 | Bundesliga ≈ 3.1
+            </small>
         </div>
 
-        <!-- RESULTADO DINÂMICO -->
-        <div id="resultado" class="card" style="display: none; border-left: 5px solid #00c853; margin-top: 20px;">
-            <h3>📊 Diagnóstico Final</h3>
-            <div id="painelResultado"></div>
+        <div class="card" style="margin-top: 15px;">
+            <label style="font-weight: bold;">⚔️ Confronto (Times):</label>
+            <input type="text" id="nomeJogo" placeholder="Ex: Flamengo x Vasco"
+                style="width: 100%; padding: 10px; margin-top: 5px; border-radius: 5px; border: 1px solid #ccc;">
         </div>
+
+        <button class="btn-analisar" onclick="executarAnalise()" ...>
+
+
+            <button class="btn-analisar" onclick="executarAnalise()"
+                style="width:100%; padding:15px; background:#1a237e; color:white; border:none; border-radius:8px; font-size:1.1em; cursor:pointer;">
+                CALCULAR PROBABILIDADE & VALOR
+            </button>
+            <br>
+            <br>
+
+            <div class="flex-row" style="margin-bottom: 15px;">
+                <button onclick="preencherExemplo()"
+                    style="flex: 1; padding: 10px; background: #546e7a; color: white; border: none; border-radius: 8px; cursor: pointer;">
+                    🧪 Preencher Exemplo
+                </button>
+                <button onclick="limparCampos()"
+                    style="flex: 1; padding: 10px; background: #d32f2f; color: white; border: none; border-radius: 8px; cursor: pointer;">
+                    🧹 Limpar Tudo
+                </button>
+            </div>
 
         <!-- RELATÓRIO -->
         <div class="card" style="overflow-x: auto; margin-top: 20px;">
