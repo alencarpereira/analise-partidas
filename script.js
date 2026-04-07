@@ -1,37 +1,59 @@
 function executarAnalise() {
-    const bancaTotal = 100;
     const getVal = (id) => parseFloat(document.getElementById(id).value) || 0;
+    const mediaLiga = getVal('mediaLiga') || 2.5;
 
     const mercado = {
-        casa: getVal('oddCasa'),
-        empate: getVal('oddEmpate'),
-        fora: getVal('oddFora'),
-        over: getVal('oddOver'),
-        btts: getVal('oddBTTS')
+        casa: getVal('oddCasa') || 0,
+        empate: getVal('oddEmpate') || 0,
+        fora: getVal('oddFora') || 0,
+        over: getVal('oddOver') || 0,
+        under: getVal('oddUnder') || 0,
+        btts: getVal('oddBTTS') || 0
     };
-
     const calcularMediaAjustada = (id) => {
         const input = document.getElementById(id).value;
         if (!input) return 0;
-        const v = input.split(',').map(Number);
+
+        const v = input.split(',').map(x => Number(x.trim()));
+
+        while (v.length < 5) v.push(0);
+
         return (v[0] + v[1] + v[2] + (v[3] * 1.5) + (v[4] * 1.5)) / 6;
     };
 
-    const expGolsCasa = (calcularMediaAjustada('golsMCasa') + getVal('forcaAtaqueCasa')) / 2;
-    const expGolsFora = (calcularMediaAjustada('golsMFora') + getVal('forcaAtaqueFora')) / 2;
+    const ataqueCasa = calcularMediaAjustada('golsMCasa');
+    const defesaCasa = calcularMediaAjustada('golsSCasa');
+
+    const ataqueFora = calcularMediaAjustada('golsMFora');
+    const defesaFora = calcularMediaAjustada('golsSFora');
+
+    const expGolsCasa =
+        (ataqueCasa + defesaFora + getVal('ataqueCasa') + (2 - getVal('defesaFora'))) / 4;
+
+    const expGolsFora =
+        (ataqueFora + defesaCasa + getVal('ataqueFora') + (2 - getVal('defesaCasa'))) / 4;
 
     const fatorMotivacao = getVal('motivacao') || 1;
-    const lambdaCasa = expGolsCasa * fatorMotivacao;
-    const lambdaFora = expGolsFora * fatorMotivacao;
 
-    const poisson = (lambda, k) => (Math.exp(-lambda) * Math.pow(lambda, k)) / [1, 1, 2, 6, 24, 120][k];
+    const lambdaCasa = Math.max(0.1, ((expGolsCasa + getVal('ataqueCasa')) / 2) * fatorMotivacao * (mediaLiga / 2.5));
+    const lambdaFora = Math.max(0.1, ((expGolsFora + getVal('ataqueFora')) / 2) * fatorMotivacao * (mediaLiga / 2.5));
+
+
+    const fatorial = (n) => {
+        if (n === 0) return 1;
+        let r = 1;
+        for (let i = 1; i <= n; i++) r *= i;
+        return r;
+    };
+
+    const poisson = (lambda, k) => (Math.exp(-lambda) * Math.pow(lambda, k)) / fatorial(k);
 
     let pCasa = 0, pFora = 0, pEmpate = 0, pOver = 0, pBTTS = 0;
     const rho = -0.05;
     let somaTotalProb = 0;
 
-    for (let i = 0; i < 6; i++) {
-        for (let j = 0; j < 6; j++) {
+    for (let i = 0; i < 10; i++) {
+        for (let j = 0; j < 10; j++) {
             let probPlacar = poisson(lambdaCasa, i) * poisson(lambdaFora, j);
             if (i === 0 && j === 0) probPlacar *= (1 - (lambdaCasa * lambdaFora * rho));
             else if (i === 0 && j === 1) probPlacar *= (1 + (lambdaCasa * rho));
@@ -42,7 +64,7 @@ function executarAnalise() {
             if (i > j) pCasa += probPlacar;
             else if (i < j) pFora += probPlacar;
             else pEmpate += probPlacar;
-            if ((i + j) > 2.5) pOver += probPlacar;
+            if ((i + j) > 2) pOver += probPlacar;
             if (i > 0 && j > 0) pBTTS += probPlacar;
         }
     }
@@ -50,18 +72,40 @@ function executarAnalise() {
     pCasa /= somaTotalProb; pFora /= somaTotalProb; pEmpate /= somaTotalProb;
     pOver /= somaTotalProb; pBTTS /= somaTotalProb;
 
+    pCasa = Math.min(Math.max(pCasa, 0), 1);
+    pFora = Math.min(Math.max(pFora, 0), 1);
+    pEmpate = Math.min(Math.max(pEmpate, 0), 1);
+    pOver = Math.min(Math.max(pOver, 0), 1);
+    pBTTS = Math.min(Math.max(pBTTS, 0), 1);
+
+
     const calcularKelly = (prob, odd) => {
         if (!odd || odd <= 1) return 0;
         const b = odd - 1;
         const kellyBruto = ((b * prob) - (1 - prob)) / b;
-        let stakeSugerida = kellyBruto * 0.10 * 100;
+        let stakeSugerida = kellyBruto * 0.25 * 100;
         return kellyBruto > 0 ? parseFloat(Math.min(stakeSugerida, 5.0).toFixed(1)) : 0;
     };
 
     // --- AQUI ESTÁ A CORREÇÃO: CRIAR AS VARIÁVEIS ANTES ---
-    const evCasa = (pCasa * mercado.casa);
-    const evBTTS = (pBTTS * mercado.btts);
-    const evOver = (pOver * mercado.over);
+    let evCasa = (pCasa * mercado.casa) - 1;
+    let evEmpate = (pEmpate * mercado.empate) - 1;
+    let evFora = (pFora * mercado.fora) - 1;
+
+    let evBTTS = (pBTTS * mercado.btts) - 1;
+    let evOver = (pOver * mercado.over) - 1;
+
+    let pUnder = 1 - pOver;
+
+    let evUnder = (pUnder * mercado.under) - 1;
+    const kUnder = calcularKelly(pUnder, mercado.under);
+
+    if (!mercado.casa) evCasa = -1;
+    if (!mercado.empate) evEmpate = -1;
+    if (!mercado.fora) evFora = -1;
+    if (!mercado.btts) evBTTS = -1;
+    if (!mercado.over) evOver = -1;
+
     const kCasa = calcularKelly(pCasa, mercado.casa);
     const kBTTS = calcularKelly(pBTTS, mercado.btts);
     const kOver = calcularKelly(pOver, mercado.over);
@@ -74,16 +118,45 @@ function executarAnalise() {
     );
 
     // --- LÓGICA PARA DEFINIR APOSTA PRINCIPAL ---
+    // --- LÓGICA PARA DEFINIR APOSTA PRINCIPAL ---
     let principalNome = "Casa";
     let maiorEV = evCasa;
     let oddFinal = mercado.casa;
     let stakeFinal = kCasa;
 
-    if (evBTTS > maiorEV) {
-        maiorEV = evBTTS; principalNome = "BTTS"; oddFinal = mercado.btts; stakeFinal = kBTTS;
+    if (evEmpate > maiorEV) {
+        maiorEV = evEmpate;
+        principalNome = "Empate";
+        oddFinal = mercado.empate;
+        stakeFinal = calcularKelly(pEmpate, mercado.empate);
     }
+
+    if (evFora > maiorEV) {
+        maiorEV = evFora;
+        principalNome = "Fora";
+        oddFinal = mercado.fora;
+        stakeFinal = calcularKelly(pFora, mercado.fora);
+    }
+
+    if (evBTTS > maiorEV) {
+        maiorEV = evBTTS;
+        principalNome = "BTTS";
+        oddFinal = mercado.btts;
+        stakeFinal = kBTTS;
+    }
+
     if (evOver > maiorEV) {
-        maiorEV = evOver; principalNome = "Over 2.5"; oddFinal = mercado.over; stakeFinal = kOver;
+        maiorEV = evOver;
+        principalNome = "Over 2.5";
+        oddFinal = mercado.over;
+        stakeFinal = kOver;
+    }
+
+    if (evUnder > maiorEV) {
+        maiorEV = evUnder;
+        principalNome = "Under 2.5";
+        oddFinal = mercado.under;
+        stakeFinal = kUnder;
     }
 
     // --- OBJETO QUE VAI PARA A TABELA ---
@@ -91,10 +164,10 @@ function executarAnalise() {
     const nomeDoTime = document.getElementById('nomeJogo').value || "Jogo " + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
     const dadosParaSalvar = {
-        time: nomeDoTime, // <--- Agora ele usa o nome que você digitou!
-        ev: maiorEV,
-        odd: oddFinal,
-        stake: stakeFinal,
+        time: nomeDoTime,
+        ev: Number(maiorEV),
+        odd: Number(oddFinal),
+        stake: Number(stakeFinal),
         pC: pCasa * 100,
         pE: pEmpate * 100,
         pF: pFora * 100,
@@ -116,30 +189,17 @@ function executarAnalise() {
     `;
 }
 
-function salvarResultado(dados) {
-    let historico = JSON.parse(localStorage.getItem('meuHistoricoApostas')) || [];
-    historico.unshift(dados);
-    localStorage.setItem('meuHistoricoApostas', JSON.stringify(historico));
-    renderizarTabela();
-}
-
-function limparHistorico() {
-    if (confirm("Isso apagará todas as análises salvas. Confirma?")) {
-        localStorage.removeItem('meuHistoricoApostas');
-        renderizarTabela();
-    }
-}
-
-
 function exibirResultados(pC, pE, pF, pBTTS, pOver, evC, evB, evO, kellyC, kellyB, kellyO, totalGols) {
     const painel = document.getElementById('painelResultado');
     document.getElementById('resultado').style.display = 'block';
 
-    const fairC = (100 / pC).toFixed(2);
-    const fairE = (100 / pE).toFixed(2);
-    const fairF = (100 / pF).toFixed(2);
-    const fairB = (100 / pBTTS).toFixed(2);
-    const fairO = (100 / pOver).toFixed(2);
+    const calcularFairOdd = (p) => p ? (100 / p).toFixed(2) : "-";
+
+    const fairC = calcularFairOdd(pC);
+    const fairE = calcularFairOdd(pE);
+    const fairF = calcularFairOdd(pF);
+    const fairB = calcularFairOdd(pBTTS);
+    const fairO = calcularFairOdd(pOver);
 
     let html = `
         <div style="display: flex; justify-content: space-between; margin-bottom: 15px; font-weight: bold; font-size: 0.9em;">
@@ -155,18 +215,18 @@ function exibirResultados(pC, pE, pF, pBTTS, pOver, evC, evB, evO, kellyC, kelly
 
     // Cards de Valor (Refatorados para serem limpos)
     const criarCard = (titulo, ev, fair, stake, cor) => {
-        if (ev <= 1.02) return "";
+        if (ev <= 0.02) return "";
         return `<div style="background:${cor}15; padding:12px; border-radius:8px; border:2px solid ${cor}; margin-bottom: 10px;">
-            <b style="color:${cor}; uppercase;">🔥 ${titulo} (EV: ${ev.toFixed(2)})</b><br>
-            Sua Odd: ${fair} | Stake: <b>${stake}%</b>
-        </div>`;
+        <b style="color:${cor}; text-transform:uppercase;">🔥 ${titulo} (EV: ${ev.toFixed(2)})</b><br>
+        Odd Justa: ${fair} | Stake: <b>${stake}%</b>
+    </div>`;
     };
 
     html += criarCard("Valor em Casa", evC, fairC, kellyC, "#2e7d32");
     html += criarCard("Valor em BTTS", evB, fairB, kellyB, "#1565c0");
     html += criarCard("Valor em Over 2.5", evO, fairO, kellyO, "#ef6c00");
 
-    if (evC <= 1.02 && evB <= 1.02 && evO <= 1.02) {
+    if (evC <= 0.02 && evB <= 0.02 && evO <= 0.02) {
         html += `<div style="background:#ffebee; padding:12px; border-radius:8px; text-align:center;">⚠️ Sem valor claro (Margem < 2%).</div>`;
     }
 
@@ -281,10 +341,6 @@ function renderizarTabela() {
     if (saldoAtualElem) saldoAtualElem.innerHTML = `Saldo Atual: R$ ${(bancaInicial + somaLucro).toFixed(2)}`;
 }
 
-
-
-
-
 // 3. LIMPAR TUDO
 function limparHistorico() {
     if (confirm("Deseja apagar todas as análises salvas?")) {
@@ -385,7 +441,7 @@ function exportarCSV() {
 
 // Função para preencher com um cenário de exemplo (ex: Flamengo vs Palmeiras)
 function preencherExemplo() {
-    // Odds do Mercado
+    // 1. ODDS DO MERCADO
     document.getElementById('oddCasa').value = "2.05";
     document.getElementById('oddEmpate').value = "3.40";
     document.getElementById('oddFora').value = "3.80";
@@ -393,22 +449,24 @@ function preencherExemplo() {
     document.getElementById('oddUnder').value = "1.90";
     document.getElementById('oddBTTS').value = "1.72";
 
-    // Dados Time Casa (Média de 1.4 gols marcados)
+    // 2. DADOS TIME CASA (IDs corrigidos conforme seu HTML)
     document.getElementById('golsMCasa').value = "2,1,1,0,3";
     document.getElementById('golsSCasa').value = "0,1,1,2,0";
-    document.getElementById('forcaAtaqueCasa').value = "1.8";
+    document.getElementById('ataqueCasa').value = "1.8";
+    document.getElementById('defesaCasa').value = "1.2";
 
-    // Dados Time Fora (Média de 1.0 gol marcado)
+    // 3. DADOS TIME FORA (IDs corrigidos conforme seu HTML)
     document.getElementById('golsMFora').value = "1,1,2,0,1";
     document.getElementById('golsSFora').value = "1,2,1,1,3";
-    document.getElementById('forcaAtaqueFora').value = "1.2";
+    document.getElementById('ataqueFora').value = "1.4";
+    document.getElementById('defesaFora').value = "1.6";
 
-    // Ajustes
-    document.getElementById('pesoH2H').value = "casa";
-    document.getElementById('motivacao').value = "1.2"; // Jogo decisivo
+    // 4. NOME DO JOGO
+    document.getElementById('nomeJogo').value = "Flamengo x Vasco";
 
-    console.log("Dados de exemplo carregados!");
+    console.log("Exemplo carregado com sucesso!");
 }
+
 
 // Função para limpar todos os campos
 function limparCampos() {
