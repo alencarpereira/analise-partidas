@@ -6,56 +6,120 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FutAnalytica - Probabilidade & Valor</title>
     <link rel="stylesheet" href="styles.css">
+    <style>
+        /* Estilos rápidos para garantir o visual que você mandou */
+        body {
+            font-family: sans-serif;
+            background: #f4f7f6;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: auto;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .flex-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+        }
+
+        label {
+            font-weight: bold;
+            font-size: 0.9em;
+            margin-bottom: 5px;
+            color: #333;
+        }
+
+        input,
+        select {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        .btn-analisar {
+            width: 100%;
+            padding: 15px;
+            background: #1a237e;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1em;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        th {
+            background: #1a237e;
+            color: white;
+            padding: 10px;
+        }
+
+        td {
+            padding: 8px;
+            border: 1px solid #ddd;
+            text-align: center;
+        }
+    </style>
 </head>
 
 <body>
 
     <div id="resumoBanca"
-        style="background: #1a237e; color: white; padding: 15px; border-radius: 8px; margin-top: 20px; display: flex; justify-content: space-around; font-weight: bold; font-size: 1.1em;">
-        <span>💰 Banca Inicial: R$ 100,00</span>
+        style="background: #1a237e; color: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-around; font-weight: bold; font-size: 1.1em;">
+        <span>💰 Banca Base: R$ 100,00</span>
         <span id="saldoAtual">Saldo Atual: R$ 100,00</span>
         <span id="lucroTotal">Lucro Total: R$ 0,00</span>
     </div>
 
-
     <div class="container">
         <header style="text-align: center; margin-bottom: 30px;">
-            <h2>⚽ Central de Inteligência: 1X2 & Gols</h2>
-            <p>Foco em Probabilidade Real vs. Valor do Mercado</p>
+            <h2>⚽ Central de Inteligência: Confronto Real</h2>
+            <p>Análise de Poisson com Cruzamento de Ataque vs. Defesa</p>
         </header>
 
-        <!-- ENTRADA DE ODDS DO MERCADO (CRUCIAL PARA VALOR) -->
+        <!-- ODDS DO MERCADO -->
         <div class="card">
-            <h3>💰 Odds da Casa (Mercado Atual)</h3>
+            <h3>💰 Odds do Mercado (Betfair/Bet365)</h3>
             <div class="grid">
                 <div class="flex-row">
-                    <div class="input-group">
-                        <label>Casa (1)</label>
-                        <input type="number" id="oddCasa" step="0.01" placeholder="Ex: 2.10">
-                    </div>
-                    <div class="input-group">
-                        <label>Empate (X)</label>
-                        <input type="number" id="oddEmpate" step="0.01" placeholder="Ex: 3.30">
-                    </div>
-                    <div class="input-group">
-                        <label>Fora (2)</label>
-                        <input type="number" id="oddFora" step="0.01" placeholder="Ex: 3.50">
-                    </div>
+                    <div class="input-group"><label>Casa (1)</label><input type="number" id="oddCasa" step="0.01"
+                            placeholder="2.10"></div>
+                    <div class="input-group"><label>Empate (X)</label><input type="number" id="oddEmpate" step="0.01"
+                            placeholder="3.30"></div>
+                    <div class="input-group"><label>Fora (2)</label><input type="number" id="oddFora" step="0.01"
+                            placeholder="3.50"></div>
                 </div>
                 <div class="flex-row">
-                    <div class="input-group">
-                        <label>Over 2.5</label>
-                        <input type="number" id="oddOver" step="0.01" placeholder="Ex: 1.95">
-                    </div>
-                    <div class="input-group">
-                        <label>Under 2.5</label>
-                        <input type="number" id="oddUnder" step="0.01" placeholder="Ex: 1.85">
-                    </div>
-                    <!-- NOVO CAMPO: AMBOS MARCAM -->
-                    <div class="input-group">
-                        <label>BTTS (Sim)</label>
-                        <input type="number" id="oddBTTS" step="0.01" placeholder="Ex: 1.80">
-                    </div>
+                    <div class="input-group"><label>Over 2.5</label><input type="number" id="oddOver" step="0.01"
+                            placeholder="1.95"></div>
+                    <div class="input-group"><label>BTTS (Sim)</label><input type="number" id="oddBTTS" step="0.01"
+                            placeholder="1.80"></div>
+                    <div class="input-group"><label>Under 2.5</label><input type="number" id="oddUnder" step="0.01"
+                            placeholder="1.85"></div>
                 </div>
             </div>
         </div>
@@ -110,23 +174,18 @@
         </div>
         <!-- CONFRONTO DIRETO & AJUSTES -->
         <div class="card">
-            <h3>⚖️ Pesos de Ajuste (H2H e Momento)</h3>
             <div class="grid">
                 <div class="input-group">
-                    <label>H2H - Quem venceu mais os últimos 5?</label>
-                    <select id="pesoH2H" style="width: 100%; padding: 8px;">
-                        <option value="equilibrio">Equilíbrio Total</option>
-                        <option value="casa">Predomínio Casa</option>
-                        <option value="fora">Predomínio Fora</option>
+                    <label>Motivação / Importância</label>
+                    <select id="motivacao">
+                        <option value="1">Normal (1.0)</option>
+                        <option value="1.1">Decisivo (1.1)</option>
+                        <option value="0.8">Amistoso (0.8)</option>
                     </select>
                 </div>
                 <div class="input-group">
-                    <label>Importância do Jogo (Motivação)</label>
-                    <select id="motivacao" style="width: 100%; padding: 8px;">
-                        <option value="1">Normal</option>
-                        <option value="1.2">Decisivo / Final</option>
-                        <option value="0.8">Amistoso / Cumprir Tabela</option>
-                    </select>
+                    <label>Nome do Confronto</label>
+                    <input type="text" id="nomeJogo" placeholder="Ex: Real Madrid x Barcelona">
                 </div>
             </div>
         </div>
@@ -172,62 +231,40 @@
                 </button>
             </div>
 
-            <!-- RESULTADO DINÂMICO -->
-            <div id="resultado" class="card" style="display: none; border-left: 5px solid #00c853;">
-                <h3>📊 Diagnóstico Final</h3>
-                <div id="painelResultado">
-                    <!-- Aqui o JS vai injetar os cálculos -->
-                </div>
+        <!-- RELATÓRIO -->
+        <div class="card" style="overflow-x: auto; margin-top: 20px;">
+            <h3>📊 Relatório Geral de Apostas</h3>
+            <table style="width:100%; border-collapse: collapse; font-size: 0.75em;">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>EV</th>
+                        <th>Odd</th>
+                        <th>Stake</th>
+                        <th>1</th>
+                        <th>X</th>
+                        <th>2</th>
+                        <th>BTTS</th>
+                        <th>O2.5</th>
+                        <th>Exp Gols</th>
+                        <th>Aposta</th>
+                        <th>Placar</th>
+                        <th>Lucro</th>
+                        <th>Ação</th>
+                    </tr>
+                </thead>
+                <tbody id="corpoTabela"></tbody>
+            </table>
+            <div style="margin-top: 15px;">
+                <button onclick="exportarCSV()"
+                    style="background:#2e7d32; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer; font-weight:bold;">📥
+                    Exportar CSV</button>
+                <button onclick="limparHistorico()"
+                    style="color:#d32f2f; background:none; border:1px solid #d32f2f; padding:8px 15px; border-radius:5px; cursor:pointer; font-weight:bold; margin-left: 10px;">🧹
+                    Limpar Histórico</button>
             </div>
+        </div>
     </div>
-
-    <!-- Onde os resultados aparecem -->
-    <div id="painelResultado"></div>
-
-    <!-- Onde a tabela de histórico vai aparecer -->
-    <!-- Procure este bloco e verifique se o botão "Limpar" e a tabela estão assim -->
-    <div
-        style="margin-top: 40px; overflow-x: auto; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-        <h3 style="color: #1a237e; border-bottom: 2px solid #1a237e; padding-bottom: 5px;">📊 Relatório Geral de Apostas
-        </h3>
-        <table id="tabelaHistorico"
-            style="width:100%; border-collapse: collapse; font-size: 0.7em; font-family: sans-serif;">
-            <thead>
-                <tr style="background:hsl(208, 43%, 84%); color: white; text-transform: uppercase;">
-                    <th style="padding:10px; border: 1px solid #ccc;">Analise do Time</th>
-                    <th style="border: 1px solid #ccc;">Valor EV</th>
-                    <th style="border: 1px solid #ccc;">Valor Aposta (Odd)</th>
-                    <th style="border: 1px solid #ccc;">Stake Sugerida</th>
-                    <th style="border: 1px solid #ccc;">Casa</th>
-                    <th style="border: 1px solid #ccc;">Empate</th>
-                    <th style="border: 1px solid #ccc;">Fora</th>
-                    <th style="border: 1px solid #ccc;">BTTS</th>
-                    <th style="border: 1px solid #ccc;">Over 2.5</th>
-                    <th style="border: 1px solid #ccc;">Expectativa Gols</th>
-                    <th style="border: 1px solid #ccc;">Aposta Principal</th>
-                    <th style="border: 1px solid #ccc;">Green/Red</th>
-                    <th style="border: 1px solid #ccc;">Perdas/Ganhos</th>
-                    <th style="border: 1px solid #ccc;">Ação</th>
-                </tr>
-            </thead>
-            <tbody id="corpoTabela">
-                <!-- Linhas inseridas pelo JS -->
-            </tbody>
-        </table>
-        <button onclick="limparHistorico()"
-            style="margin-top:15px; color:#d32f2f; background:none; border:1px solid #d32f2f; padding:5px 10px; border-radius:4px; cursor:pointer; font-weight:bold;">
-            🧹 Limpar Todo o Histórico
-        </button>
-
-        <button onclick="exportarCSV()"
-            style="margin-top:10px; background:#2e7d32; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer; font-weight:bold; margin-left: 10px;">
-            📥 Exportar para Excel (CSV)
-        </button>
-
-    </div>
-
-    </div>
-
 
     <script src="script.js"></script>
 </body>
