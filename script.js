@@ -155,6 +155,7 @@ function executarAnalise() {
         pF: pF * 100,
         pB: pB * 100,
         pO: pO * 100,
+        pU: pU * 100,
         expGols: lambdaCasa + lambdaFora,
         principal: melhor.nome,
         lucro: 0,
@@ -296,6 +297,7 @@ function renderizarTabela() {
             <td>${Number(j.pF).toFixed(1)}%</td>
             <td>${Number(j.pB).toFixed(1)}%</td>
             <td>${Number(j.pO).toFixed(1)}%</td>
+            <td>${Number(j.pU || 0).toFixed(1)}%</td>
             <td>${Number(j.expGols).toFixed(2)}</td>
             <td><b>${j.principal}</b></td>
 
