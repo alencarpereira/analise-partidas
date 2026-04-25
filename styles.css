@@ -10,7 +10,7 @@
         background: var(--bg);
         color: #333;
         margin: 0;
-        padding: 50px;
+        padding: 20px;
     }
 
     .container {
@@ -30,7 +30,7 @@
 
     .card {
         background: white;
-        padding: 50px;
+        padding: 20px;
         border-radius: 12px;
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         margin-bottom: 20px;
@@ -60,6 +60,90 @@
         border-radius: 4px;
         box-sizing: border-box;
     }
+
+    /* --- AJUSTES EXCLUSIVOS DA TABELA --- */
+
+    /* 1. Card do Relatório: Garante que ocupe a largura e tenha respiro */
+    .card:has(table) {
+        width: 100%;
+        overflow-x: auto;
+        padding: 15px;
+        /* Compactado */
+    }
+
+    /* 2. Estrutura da Tabela: 30% mais compacta e larga */
+    table {
+        width: 100%;
+        min-width: 1200px;
+        /* Garante espaço para o traçado não amontoar */
+        border-collapse: collapse;
+        font-size: 0.85em;
+        /* Redução de tamanho de fonte */
+        margin-top: 10px;
+    }
+
+    th {
+        background: var(--primary);
+        color: white;
+        padding: 8px 4px;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.75em;
+    }
+
+    td {
+        padding: 6px 4px;
+        /* Linhas 30% mais finas */
+        border-bottom: 1px solid #eee;
+        text-align: center;
+    }
+
+    /* 3. Inputs da Tabela: Estilo Traçado (Underline) */
+    #corpoTabela input {
+        border: none !important;
+        border-bottom: 2px solid var(--primary) !important;
+        background: transparent !important;
+        border-radius: 0 !important;
+        width: 40px !important;
+        /* Mais curto */
+        height: 25px;
+        padding: 0;
+        text-align: center;
+        color: #333;
+        font-weight: bold;
+        font-size: 0.9em;
+    }
+
+    #corpoTabela input:focus {
+        outline: none;
+        border-bottom: 2px solid var(--accent) !important;
+        background: rgba(0, 200, 83, 0.05) !important;
+    }
+
+    /* 4. Botões da Tabela: Mais compactos */
+    #corpoTabela button {
+        padding: 4px 8px;
+        font-size: 0.85em;
+        border-radius: 4px;
+        border: none;
+        cursor: pointer;
+        background: var(--accent);
+        color: white;
+        transition: 0.2s;
+    }
+
+    /* 5. Colunas específicas: Espaçamento para o Placar */
+    #corpoTabela td:nth-last-child(3) {
+        min-width: 150px;
+        /* Dá espaço para os inputs com traçado */
+    }
+
+    /* 6. Linha do lucro em negrito */
+    #corpoTabela td:nth-last-child(2) {
+        font-weight: bold;
+        color: #2e7d32;
+    }
+
 
     .btn-analisar {
         width: 100%;
