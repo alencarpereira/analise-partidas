@@ -14,9 +14,13 @@
     }
 
     .container {
-        max-width: 1000px;
+        width: 100%;
+        max-width: 1400px;
+        /* ou remove se quiser full total */
         margin: auto;
     }
+
+
 
     .grid {
         display: grid;
@@ -96,15 +100,9 @@
         width: 100%;
         border-collapse: collapse;
         margin-top: 10px;
-    }
-
-    th {
-        font-size: 0.8em;
-        text-align: center;
-        /* Mudei de left para center */
-        color: #666;
-        padding: 10px 5px;
-        border-bottom: 2px solid var(--primary);
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
     }
 
 
