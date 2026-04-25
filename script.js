@@ -163,15 +163,13 @@ function executarAnalise() {
     };
 }
 
-
 function exibirResultados(
     pC, pE, pF,
-    pBTTS, pOver,
-    evC, evB, evO,
-    kellyC, kellyB, kellyO,
+    pBTTS, pOver, pUnder,      // <--- Adicionado pUnder
+    evC, evB, evO, evU,        // <--- Adicionado evU
+    kC, kB, kO, kU,            // <--- Adicionado kU
     totalGols
 ) {
-
     const painel = document.getElementById('painelResultado');
     if (!painel) return;
 
@@ -187,58 +185,45 @@ function exibirResultados(
         ${linha("🏠 Casa", pC)}
         ${linha("🤝 Empate", pE)}
         ${linha("🚀 Fora", pF)}
-
         <hr>
-
         <h3>📈 Mercados</h3>
         ${linha("⚽ BTTS", pBTTS)}
         ${linha("📈 Over 2.5", pOver)}
-
+        ${linha("📉 Under 2.5", pUnder)} 
         <hr>
         <p>🔢 Gols esperados: <b>${totalGols.toFixed(2)}</b></p>
     `;
 
-    let melhor = "Sem valor";
-    let ev = -999;
-    let stake = 0;
-
+    // Lógica para encontrar a melhor opção com o Under incluído
     const options = [
-        { nome: "Casa", ev: evC, stake: kellyC },
-        { nome: "BTTS", ev: evB, stake: kellyB },
-        { nome: "Over 2.5", ev: evO, stake: kellyO }
+        { nome: "Casa", ev: evC, stake: kC },
+        { nome: "BTTS", ev: evB, stake: kB },
+        { nome: "Over 2.5", ev: evO, stake: kO },
+        { nome: "Under 2.5", ev: evU, stake: kU }
     ];
 
-    for (let o of options) {
-        if (o.ev > ev) {
-            ev = o.ev;
-            melhor = o.nome;
-            stake = o.stake;
-        }
-    }
-
+    let melhorOpcao = options.reduce((prev, current) => (prev.ev > current.ev) ? prev : current);
     const threshold = 0.05;
 
-    if (ev >= threshold) {
+    if (melhorOpcao.ev >= threshold) {
         html += `
         <div style="margin-top:15px;padding:12px;background:#e8f5e9;border-radius:8px;">
-            <b>🔥 Melhor Aposta:</b> ${melhor}<br>
-            EV: <b>${ev.toFixed(2)}</b> | Stake: <b>${stake}%</b>
+            <b>🔥 Melhor Aposta:</b> ${melhorOpcao.nome}<br>
+            EV: <b>${melhorOpcao.ev.toFixed(2)}</b> | Stake: <b>${melhorOpcao.stake.toFixed(1)}%</b>
         </div>`;
     } else {
-        html += `
-        <div style="margin-top:15px;padding:12px;background:#ffebee;border-radius:8px;">
-            ⚠️ Sem valor no jogo
-        </div>`;
+        html += `<div style="margin-top:15px;padding:12px;background:#ffebee;border-radius:8px;">⚠️ Sem valor</div>`;
     }
 
     html += `
-        <button onclick="salvarResultado()" style="margin-top:15px;width:100%;padding:12px;background:#1a237e;color:#fff;border:none;border-radius:8px;">
+        <button onclick="salvarResultado()" style="margin-top:15px;width:100%;padding:12px;background:#1a237e;color:#fff;border:none;border-radius:8px;cursor:pointer;">
         💾 SALVAR NA TABELA
         </button>
     `;
 
     painel.innerHTML = html;
 }
+
 
 function salvarResultado() {
 
