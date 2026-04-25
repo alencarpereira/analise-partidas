@@ -1,395 +1,402 @@
+function exibirResultados(pC, pE, pF, pBTTS, pOver, evC, evB, evO, kellyC, kellyB, kellyO, totalGols) {
+
+    const painel = document.getElementById('painelResultado');
+    if (!painel) return;
+
+    const linha = (nome, prob) => `
+    <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+        <span>${nome}</span>
+        <b>${prob.toFixed(1)}%</b>
+    </div>
+    `;
+
+    let html = `
+    <h3>📊 Probabilidades</h3>
+    ${linha("🏠 Casa", pC)}
+    ${linha("🤝 Empate", pE)}
+    ${linha("🚀 Fora", pF)}
+
+    <hr>
+
+    <h3>📈 Mercados</h3>
+    ${linha("⚽ BTTS", pBTTS)}
+    ${linha("📈 Over 2.5", pOver)}
+
+    <hr>
+    <p>🔢 Gols esperados: <b>${totalGols.toFixed(2)}</b></p>
+    `;
+
+    let melhor = "Sem valor";
+    let ev = 1;
+    let stake = 0;
+
+    if (evC > ev) { melhor = "🏠 Casa"; ev = evC; stake = kellyC; }
+    if (evB > ev) { melhor = "⚽ BTTS"; ev = evB; stake = kellyB; }
+    if (evO > ev) { melhor = "📈 Over 2.5"; ev = evO; stake = kellyO; }
+
+    if (ev > 1.02) {
+        html += `
+        <div style="margin-top:15px; padding:10px; background:#e8f5e9; border-radius:6px;">
+            <b>🔥 Melhor Aposta:</b> ${melhor}<br>
+            EV: <b>${ev.toFixed(2)}</b> | Stake: <b>${stake}%</b>
+        </div>`;
+    } else {
+        html += `
+        <div style="margin-top:15px; padding:10px; background:#ffebee; border-radius:6px;">
+            ⚠️ Sem valor no jogo
+        </div>`;
+
+        // 👇 AGORA SIM VAI APARECER
+        html += `
+        <div style="margin-top:10px; padding:10px; background:#fff3e0; border-radius:6px;">
+            ⚠️ Recomendação: NÃO APOSTAR
+        </div>`;
+    }
+
+    html += `
+    <button onclick="salvarResultado()" 
+    style="margin-top:10px;padding:10px;width:100%;background:#1a237e;color:#fff;border:none;border-radius:6px;cursor:pointer;">
+    💾 Salvar Aposta
+    </button>
+    `;
+
+    painel.innerHTML = html;
+}
+
 function executarAnalise() {
-    const getVal = (id) => parseFloat(document.getElementById(id).value) || 0;
-    const mediaLiga = getVal('mediaLiga') || 2.5;
+
+    const getVal = id => parseFloat(document.getElementById(id)?.value) || 0;
+
+    // 🔥 INPUTS
+    const motivacao = getVal('motivacao') || 1;
 
     const mercado = {
-        casa: getVal('oddCasa') || 0,
-        empate: getVal('oddEmpate') || 0,
-        fora: getVal('oddFora') || 0,
-        over: getVal('oddOver') || 0,
-        under: getVal('oddUnder') || 0,
-        btts: getVal('oddBTTS') || 0
-    };
-    const calcularMediaAjustada = (id) => {
-        const input = document.getElementById(id).value;
-        if (!input) return 0;
-
-        const v = input.split(',').map(x => Number(x.trim()));
-
-        while (v.length < 5) v.push(0);
-
-        return (v[0] + v[1] + v[2] + (v[3] * 1.5) + (v[4] * 1.5)) / 6;
+        casa: getVal('oddCasa'),
+        empate: getVal('oddEmpate'),
+        fora: getVal('oddFora'),
+        over: getVal('oddOver'),
+        btts: getVal('oddBTTS')
     };
 
-    const ataqueCasa = calcularMediaAjustada('golsMCasa');
-    const defesaCasa = calcularMediaAjustada('golsSCasa');
+    const ataqueCasa = getVal('ataqueCasa');
+    const ataqueFora = getVal('ataqueFora');
+    const defesaCasa = getVal('defesaCasa');
+    const defesaFora = getVal('defesaFora');
+    const mediaLiga = getVal('mediaLiga') || 2.5;
 
-    const ataqueFora = calcularMediaAjustada('golsMFora');
-    const defesaFora = calcularMediaAjustada('golsSFora');
+    // 📊 FORMA RECENTE
+    const media = id => {
+        const el = document.getElementById(id);
+        if (!el || !el.value) return 0;
 
-    const expGolsCasa =
-        (ataqueCasa + defesaFora + getVal('ataqueCasa') + (2 - getVal('defesaFora'))) / 4;
+        const v = el.value.split(',').map(Number);
+        if (v.length < 5) return 0;
 
-    const expGolsFora =
-        (ataqueFora + defesaCasa + getVal('ataqueFora') + (2 - getVal('defesaCasa'))) / 4;
+        return (v[0] + v[1] + v[2] + v[3] * 1.5 + v[4] * 1.5) / 6;
+    };
 
-    const fatorMotivacao = getVal('motivacao') || 1;
+    const formaCasa = media('golsMCasa');
+    const formaFora = media('golsMFora');
 
-    const lambdaCasa = Math.max(0.1, ((expGolsCasa + getVal('ataqueCasa')) / 2) * fatorMotivacao * (mediaLiga / 2.5));
-    const lambdaFora = Math.max(0.1, ((expGolsFora + getVal('ataqueFora')) / 2) * fatorMotivacao * (mediaLiga / 2.5));
+    // ⚖️ FORÇA RELATIVA
+    const forcaAtaqueCasa = ataqueCasa / mediaLiga;
+    const forcaDefesaFora = defesaFora / mediaLiga;
 
+    const forcaAtaqueFora = ataqueFora / mediaLiga;
+    const forcaDefesaCasa = defesaCasa / mediaLiga;
 
-    const fatorial = (n) => {
-        if (n === 0) return 1;
+    // 🔥 MOTIVAÇÃO SUAVE
+    const ajusteMotivacao = 1 + ((motivacao - 1) * 0.5);
+
+    // ⚽ EXPECTATIVA INICIAL (POISSON)
+    let lambdaCasa = mediaLiga * forcaAtaqueCasa * forcaDefesaFora * 1.10 * ajusteMotivacao;
+    let lambdaFora = mediaLiga * forcaAtaqueFora * forcaDefesaCasa * ajusteMotivacao;
+
+    // 🔄 AJUSTE COM FORMA RECENTE
+    if (formaCasa > 0) lambdaCasa = (lambdaCasa + formaCasa) / 2;
+    if (formaFora > 0) lambdaFora = (lambdaFora + formaFora) / 2;
+
+    // 🔢 FATORIAL OTIMIZADO
+    const fatorial = n => {
         let r = 1;
-        for (let i = 1; i <= n; i++) r *= i;
+        for (let i = 2; i <= n; i++) r *= i;
         return r;
     };
 
-    const poisson = (lambda, k) => (Math.exp(-lambda) * Math.pow(lambda, k)) / fatorial(k);
+    const poisson = (l, k) => (Math.exp(-l) * Math.pow(l, k)) / fatorial(k);
 
-    let pCasa = 0, pFora = 0, pEmpate = 0, pOver = 0, pBTTS = 0;
-    const rho = -0.05;
-    let somaTotalProb = 0;
+    // 🔄 MATRIZ DE PROBABILIDADE
+    let pC = 0, pF = 0, pE = 0, pO = 0, pB = 0, soma = 0;
 
-    for (let i = 0; i < 10; i++) {
-        for (let j = 0; j < 10; j++) {
-            let probPlacar = poisson(lambdaCasa, i) * poisson(lambdaFora, j);
-            if (i === 0 && j === 0) probPlacar *= (1 - (lambdaCasa * lambdaFora * rho));
-            else if (i === 0 && j === 1) probPlacar *= (1 + (lambdaCasa * rho));
-            else if (i === 1 && j === 0) probPlacar *= (1 + (lambdaFora * rho));
-            else if (i === 1 && j === 1) probPlacar *= (1 - rho);
+    for (let i = 0; i < 8; i++) {
+        for (let j = 0; j < 8; j++) {
 
-            somaTotalProb += probPlacar;
-            if (i > j) pCasa += probPlacar;
-            else if (i < j) pFora += probPlacar;
-            else pEmpate += probPlacar;
-            if ((i + j) > 2) pOver += probPlacar;
-            if (i > 0 && j > 0) pBTTS += probPlacar;
+            const p = poisson(lambdaCasa, i) * poisson(lambdaFora, j);
+            soma += p;
+
+            if (i > j) pC += p;
+            else if (i < j) pF += p;
+            else pE += p;
+
+            if (i + j >= 3) pO += p;
+            if (i > 0 && j > 0) pB += p;
         }
     }
 
-    pCasa /= somaTotalProb; pFora /= somaTotalProb; pEmpate /= somaTotalProb;
-    pOver /= somaTotalProb; pBTTS /= somaTotalProb;
+    // 🔥 NORMALIZAÇÃO
+    pC /= soma;
+    pF /= soma;
+    pE /= soma;
+    pO /= soma;
+    pB /= soma;
 
-    pCasa = Math.min(Math.max(pCasa, 0), 1);
-    pFora = Math.min(Math.max(pFora, 0), 1);
-    pEmpate = Math.min(Math.max(pEmpate, 0), 1);
-    pOver = Math.min(Math.max(pOver, 0), 1);
-    pBTTS = Math.min(Math.max(pBTTS, 0), 1);
+    // 💰 EV
+    let evC = pC * mercado.casa;
+    let evE = pE * mercado.empate;
+    let evB = pB * mercado.btts;
+    let evO = pO * mercado.over;
 
+    // 🚫 FILTRO DE PROBABILIDADE (ANTI ARMADILHA)
+    if (pC < 0.40) evC = 0;
+    if (pE < 0.25) evE = 0;
+    if (pB < 0.35) evB = 0;
+    if (pO < 0.30) evO = 0;
 
-    const calcularKelly = (prob, odd) => {
-        if (!odd || odd <= 1) return 0;
-        const b = odd - 1;
-        const kellyBruto = ((b * prob) - (1 - prob)) / b;
-        let stakeSugerida = kellyBruto * 0.25 * 100;
-        return kellyBruto > 0 ? parseFloat(Math.min(stakeSugerida, 5.0).toFixed(1)) : 0;
+    // 📉 KELLY SEGURO
+    const kelly = (p, o) => {
+        if (!o || o <= 1) return 0;
+
+        const b = o - 1;
+        const k = ((b * p) - (1 - p)) / b;
+
+        return k > 0 ? Math.min(k * 0.25 * 100, 5).toFixed(1) : 0;
     };
 
-    // --- AQUI ESTÁ A CORREÇÃO: CRIAR AS VARIÁVEIS ANTES ---
-    let evCasa = (pCasa * mercado.casa) - 1;
-    let evEmpate = (pEmpate * mercado.empate) - 1;
-    let evFora = (pFora * mercado.fora) - 1;
+    const kC = kelly(pC, mercado.casa);
+    const kE = kelly(pE, mercado.empate);
+    const kB = kelly(pB, mercado.btts);
+    const kO = kelly(pO, mercado.over);
 
-    let evBTTS = (pBTTS * mercado.btts) - 1;
-    let evOver = (pOver * mercado.over) - 1;
-
-    let pUnder = 1 - pOver;
-
-    let evUnder = (pUnder * mercado.under) - 1;
-    const kUnder = calcularKelly(pUnder, mercado.under);
-
-    if (!mercado.casa) evCasa = -1;
-    if (!mercado.empate) evEmpate = -1;
-    if (!mercado.fora) evFora = -1;
-    if (!mercado.btts) evBTTS = -1;
-    if (!mercado.over) evOver = -1;
-
-    const kCasa = calcularKelly(pCasa, mercado.casa);
-    const kBTTS = calcularKelly(pBTTS, mercado.btts);
-    const kOver = calcularKelly(pOver, mercado.over);
-
+    // 📊 EXIBIÇÃO
     exibirResultados(
-        pCasa * 100, pEmpate * 100, pFora * 100, pBTTS * 100, pOver * 100,
-        evCasa, evBTTS, evOver,
-        kCasa, kBTTS, kOver,
+        pC * 100, pE * 100, pF * 100,
+        pB * 100, pO * 100,
+        evC, evB, evO,
+        kC, kB, kO,
         lambdaCasa + lambdaFora
     );
 
-    // --- LÓGICA PARA DEFINIR APOSTA PRINCIPAL ---
-    // --- LÓGICA PARA DEFINIR APOSTA PRINCIPAL ---
-    let principalNome = "Casa";
-    let maiorEV = evCasa;
-    let oddFinal = mercado.casa;
-    let stakeFinal = kCasa;
+    // 🧠 ESCOLHA DA MELHOR APOSTA
+    let principal = "Sem valor";
+    let ev = 1;
+    let odd = 0;
+    let stake = 0;
 
-    if (evEmpate > maiorEV) {
-        maiorEV = evEmpate;
-        principalNome = "Empate";
-        oddFinal = mercado.empate;
-        stakeFinal = calcularKelly(pEmpate, mercado.empate);
+    if (evE > ev) {
+        principal = "Empate";
+        ev = evE;
+        odd = mercado.empate;
+        stake = kE;
     }
 
-    if (evFora > maiorEV) {
-        maiorEV = evFora;
-        principalNome = "Fora";
-        oddFinal = mercado.fora;
-        stakeFinal = calcularKelly(pFora, mercado.fora);
+    if (evB > ev) {
+        principal = "BTTS";
+        ev = evB;
+        odd = mercado.btts;
+        stake = kB;
     }
 
-    if (evBTTS > maiorEV) {
-        maiorEV = evBTTS;
-        principalNome = "BTTS";
-        oddFinal = mercado.btts;
-        stakeFinal = kBTTS;
+    if (evO > ev) {
+        principal = "Over 2.5";
+        ev = evO;
+        odd = mercado.over;
+        stake = kO;
     }
 
-    if (evOver > maiorEV) {
-        maiorEV = evOver;
-        principalNome = "Over 2.5";
-        oddFinal = mercado.over;
-        stakeFinal = kOver;
-    }
+    // 🚫 FILTRO FINAL
+    if (ev < 1.08) principal = "Sem valor";
 
-    if (evUnder > maiorEV) {
-        maiorEV = evUnder;
-        principalNome = "Under 2.5";
-        oddFinal = mercado.under;
-        stakeFinal = kUnder;
-    }
-
-    // --- OBJETO QUE VAI PARA A TABELA ---
-    // Pega o nome digitado ou coloca a hora se estiver vazio
-    const nomeDoTime = document.getElementById('nomeJogo').value || "Jogo " + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-
-    const dadosParaSalvar = {
-        time: nomeDoTime,
-        ev: Number(maiorEV),
-        odd: Number(oddFinal),
-        stake: Number(stakeFinal),
-        pC: pCasa * 100,
-        pE: pEmpate * 100,
-        pF: pFora * 100,
-        pB: pBTTS * 100,
-        pO: pOver * 100,
+    // 💾 SALVAR TEMP
+    window.dadosTemp = {
+        time: document.getElementById('nomeJogo')?.value || "Jogo",
+        ev,
+        odd,
+        stake: Number(stake),
+        pC: pC * 100,
+        pE: pE * 100,
+        pF: pF * 100,
+        pB: pB * 100,
+        pO: pO * 100,
         expGols: lambdaCasa + lambdaFora,
-        principal: principalNome,
+        principal,
         lucro: 0,
         resultado: "Pendente"
     };
-
-
-    // Inserindo o botão no painel de resultados
-    document.getElementById('painelResultado').innerHTML += `
-        <button onclick='salvarResultado(${JSON.stringify(dadosParaSalvar)})' 
-                style="width:100%; margin-top:15px; padding:12px; background:#1a237e; color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">
-            💾 SALVAR NA TABELA DE RELATÓRIO
-        </button>
-    `;
 }
 
-function exibirResultados(pC, pE, pF, pBTTS, pOver, evC, evB, evO, kellyC, kellyB, kellyO, totalGols) {
-    const painel = document.getElementById('painelResultado');
-    document.getElementById('resultado').style.display = 'block';
+document.getElementById('painelResultado').innerHTML += `
+    <button onclick="salvarResultado()"
+        style="width:100%; margin-top:15px; padding:12px;
+        background:#1a237e; color:white; border:none;
+        border-radius:8px; font-weight:bold; cursor:pointer;">
+        💾 SALVAR NA TABELA
+    </button>
+`;
 
-    const calcularFairOdd = (p) => p ? (100 / p).toFixed(2) : "-";
 
-    const fairC = calcularFairOdd(pC);
-    const fairE = calcularFairOdd(pE);
-    const fairF = calcularFairOdd(pF);
-    const fairB = calcularFairOdd(pBTTS);
-    const fairO = calcularFairOdd(pOver);
 
-    let html = `
-        <div style="display: flex; justify-content: space-between; margin-bottom: 15px; font-weight: bold; font-size: 0.9em;">
-            <span>🏠 Casa: ${pC.toFixed(1)}% <small style="color:#666">(${fairC})</small></span>
-            <span>🤝 Empate: ${pE.toFixed(1)}% <small style="color:#666">(${fairE})</small></span>
-            <span>🚀 Fora: ${pF.toFixed(1)}% <small style="color:#666">(${fairF})</small></span>
-        </div>
-        <div style="display: flex; justify-content: space-around; margin-bottom: 15px; font-size: 0.85em;">
-            <span style="color: #1565c0;">⚽ BTTS: <b>${pBTTS.toFixed(1)}%</b> <small>(${fairB})</small></span>
-            <span style="color: #e65100;">📈 Over 2.5: <b>${pOver.toFixed(1)}%</b> <small>(${fairO})</small></span>
-        </div>
-    `;
 
-    // Cards de Valor (Refatorados para serem limpos)
-    const criarCard = (titulo, ev, fair, stake, cor) => {
-        if (ev <= 0.02) return "";
-        return `<div style="background:${cor}15; padding:12px; border-radius:8px; border:2px solid ${cor}; margin-bottom: 10px;">
-        <b style="color:${cor}; text-transform:uppercase;">🔥 ${titulo} (EV: ${ev.toFixed(2)})</b><br>
-        Odd Justa: ${fair} | Stake: <b>${stake}%</b>
-    </div>`;
-    };
+function salvarResultado() {
 
-    html += criarCard("Valor em Casa", evC, fairC, kellyC, "#2e7d32");
-    html += criarCard("Valor em BTTS", evB, fairB, kellyB, "#1565c0");
-    html += criarCard("Valor em Over 2.5", evO, fairO, kellyO, "#ef6c00");
-
-    if (evC <= 0.02 && evB <= 0.02 && evO <= 0.02) {
-        html += `<div style="background:#ffebee; padding:12px; border-radius:8px; text-align:center;">⚠️ Sem valor claro (Margem < 2%).</div>`;
+    if (!window.dadosTemp) {
+        alert("Nenhuma análise para salvar!");
+        return;
     }
 
-    html += `<p style="font-size: 0.8em; margin-top: 10px; color: #666; text-align:center;">Expectativa Total: <b>${totalGols.toFixed(2)} gols</b></p>`;
-    painel.innerHTML = html;
-}
-// 1. FUNÇÃO PARA SALVAR (Garante que os números entrem limpos)
-function salvarResultado(dados) {
-    let historico = JSON.parse(localStorage.getItem('meuHistoricoApostas')) || [];
-    // Adiciona campos iniciais de controle
-    dados.resultado = "Pendente";
-    dados.lucro = 0;
+    const confirmar = confirm("Deseja salvar esta análise no relatório?");
 
-    historico.unshift(dados);
+    if (!confirmar) return;
+
+    let historico = JSON.parse(localStorage.getItem('meuHistoricoApostas')) || [];
+
+    historico.unshift(window.dadosTemp);
+
     localStorage.setItem('meuHistoricoApostas', JSON.stringify(historico));
+
     renderizarTabela();
-    alert("Análise salva com sucesso!");
+
+    alert("✅ Análise salva com sucesso!");
 }
 
-// 2. FUNÇÃO PARA CALCULAR GREEN/RED (Arruma a última coluna)
-function marcarResultado(index, tipo) {
-    let historico = JSON.parse(localStorage.getItem('meuHistoricoApostas')) || [];
-    let jogo = historico[index];
-    const bancaBase = 100; // Valor da sua banca para o cálculo
-
-    // Converte a stake para valor financeiro (ex: 1.8% de 1000 = 18.00)
-    let valorApostado = bancaBase * (Number(jogo.stake) / 100);
-
-    if (tipo === 'Green') {
-        // Lucro Líquido: (Odd - 1) * Valor Apostado
-        jogo.lucro = (Number(jogo.odd) - 1) * valorApostado;
-        jogo.resultado = "Green";
-    } else {
-        // Prejuízo: Valor Apostado negativo
-        jogo.lucro = -valorApostado;
-        jogo.resultado = "Red";
-    }
-
-    localStorage.setItem('meuHistoricoApostas', JSON.stringify(historico));
-    renderizarTabela(); // Atualiza o R$ na tela na hora
-}
-
-// 3. FUNÇÃO PARA RENDERIZAR (O visual da tabela)
 function renderizarTabela() {
-    const historico = JSON.parse(localStorage.getItem('meuHistoricoApostas')) || [];
+
+    const hist = JSON.parse(localStorage.getItem('meuHistoricoApostas')) || [];
     const corpo = document.getElementById('corpoTabela');
-    if (!corpo) return;
 
-    let somaLucro = 0;
+    let lucroTotal = 0;
+    const bancaBase = 100;
 
-    corpo.innerHTML = historico.map((jogo, index) => {
-        const ev = Number(jogo.ev) || 0;
-        const odd = Number(jogo.odd) || 0;
-        const stake = Number(jogo.stake) || 0;
-        const lucro = Number(jogo.lucro) || 0;
-        somaLucro += lucro;
+    corpo.innerHTML = hist.map((j, i) => {
 
-        let bgLinha = "#fff9c4"; // Pendente (Amarelo)
-        if (jogo.resultado === "Green") bgLinha = "#e8f5e9";
-        if (jogo.resultado === "Red") bgLinha = "#ffebee";
+        const lucro = Number(j.lucro) || 0;
+        lucroTotal += lucro;
 
         return `
-            <tr style="background: ${bgLinha}; border-bottom: 1px solid #ddd; text-align: center;">
-                <td style="padding:8px; font-weight:bold; border: 1px solid #ddd;">${jogo.time}</td>
-                <td style="border: 1px solid #ddd;">${ev.toFixed(2)}</td>
-                <td style="border: 1px solid #ddd;">${odd.toFixed(2)}</td>
-                <td style="border: 1px solid #ddd; color: #1565c0; font-weight:bold;">${stake.toFixed(1)}%</td>
-                <td style="border: 1px solid #ddd;">${Number(jogo.pC).toFixed(1)}%</td>
-                <td style="border: 1px solid #ddd;">${Number(jogo.pE).toFixed(1)}%</td>
-                <td style="border: 1px solid #ddd;">${Number(jogo.pF).toFixed(1)}%</td>
-                <td style="border: 1px solid #ddd;">${Number(jogo.pB).toFixed(1)}%</td>
-                <td style="border: 1px solid #ddd;">${Number(jogo.pO).toFixed(1)}%</td>
-                <td style="border: 1px solid #ddd;">${Number(jogo.expGols).toFixed(2)}</td>
-                <td style="border: 1px solid #ddd; background: #fffde7;"><b>${jogo.principal}</b></td>
-            
-<td style="border: 1px solid #ddd; min-width: 140px; padding: 5px;">
-    <div style="display: flex; align-items: center; justify-content: center; gap: 5px;">
-        <input type="number" id="resC-${index}" 
-               style="width: 45px; height: 25px; text-align: center; border: 1px solid #999; border-radius: 4px; font-weight: bold; font-size: 1.1em; appearance: textfield;" 
-               value="${jogo.golsC !== undefined ? jogo.golsC : ''}">
-        
-        <span style="font-weight: bold; font-size: 1.1em;">×</span>
-        
-        <input type="number" id="resF-${index}" 
-               style="width: 45px; height: 25px; text-align: center; border: 1px solid #999; border-radius: 4px; font-weight: bold; font-size: 1.1em; appearance: textfield;" 
-               value="${jogo.golsF !== undefined ? jogo.golsF : ''}">
-        
-        <button onclick="validarPlacar(${index})" 
-                style="background: #1a237e; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.2s;">
-            OK
-        </button>
-    </div>
-</td>
+        <tr>
+            <td>${j.time}</td>
+            <td>${Number(j.ev).toFixed(2)}</td>
+            <td>${Number(j.odd).toFixed(2)}</td>
+            <td>${Number(j.stake).toFixed(1)}%</td>
+            <td>${Number(j.pC).toFixed(1)}%</td>
+            <td>${Number(j.pE).toFixed(1)}%</td>
+            <td>${Number(j.pF).toFixed(1)}%</td>
+            <td>${Number(j.pB).toFixed(1)}%</td>
+            <td>${Number(j.pO).toFixed(1)}%</td>
+            <td>${Number(j.expGols).toFixed(2)}</td>
+            <td><b>${j.principal}</b></td>
 
+            <!-- PLACAR -->
+            <td>
+                ${j.golsC !== undefined && j.golsF !== undefined
+                ? `${j.golsC} x ${j.golsF}`
+                : `
+                    <input id="resC-${i}" type="number" style="width:40px;">
+                    x
+                    <input id="resF-${i}" type="number" style="width:40px;">
+                    <button onclick="validarPlacar(${i})">✔</button>
+                `}
+            </td>
 
-                <td style="border: 1px solid #ddd; font-weight:bold; color: ${lucro >= 0 ? '#2e7d32' : '#c62828'}">
-                    R$ ${lucro.toFixed(2)}
-                </td>
-                <td style="border: 1px solid #ddd;">
-                    <button onclick="excluirLinha(${index})" style="background:none; border:none; cursor:pointer; font-size:1.2em;">🗑️</button>
-                </td>
-            </tr>
-        `;
+            <td>R$ ${lucro.toFixed(2)}</td>
+
+            <td>
+                <button onclick="excluir(${i})">🗑️</button>
+            </td>
+        </tr>`;
     }).join('');
 
-    // Atualiza Painel de Saldo
-    const bancaInicial = 100;
-    const lucroTotalElem = document.getElementById('lucroTotal');
-    const saldoAtualElem = document.getElementById('saldoAtual');
+    // ✅ CALCULO FINAL
+    const saldoAtual = bancaBase + lucroTotal;
 
-    if (lucroTotalElem) lucroTotalElem.innerHTML = `Lucro Total: ${somaLucro >= 0 ? '+' : ''} R$ ${somaLucro.toFixed(2)}`;
-    if (saldoAtualElem) saldoAtualElem.innerHTML = `Saldo Atual: R$ ${(bancaInicial + somaLucro).toFixed(2)}`;
+    document.getElementById('lucroTotal').innerText =
+        `Lucro: R$ ${lucroTotal.toFixed(2)}`;
+
+    document.getElementById('saldoAtual').innerText =
+        `Saldo Atual: R$ ${saldoAtual.toFixed(2)}`;
 }
 
-// 3. LIMPAR TUDO
+function excluir(index) {
+
+    const confirmar = confirm("Deseja excluir esta análise?");
+
+    if (!confirmar) return;
+
+    let historico = JSON.parse(localStorage.getItem('meuHistoricoApostas')) || [];
+
+    historico.splice(index, 1);
+
+    localStorage.setItem('meuHistoricoApostas', JSON.stringify(historico));
+
+    renderizarTabela();
+}
+
 function limparHistorico() {
-    if (confirm("Deseja apagar todas as análises salvas?")) {
-        localStorage.removeItem('meuHistoricoApostas');
-        renderizarTabela();
-    }
-}
 
-// Chamar ao carregar a página
-window.onload = renderizarTabela;
+    let historico = JSON.parse(localStorage.getItem('meuHistoricoApostas')) || [];
 
-function excluirLinha(index) {
-    if (confirm("Deseja excluir esta análise permanentemente?")) {
-        let historico = JSON.parse(localStorage.getItem('meuHistoricoApostas')) || [];
-        historico.splice(index, 1); // Remove 1 item na posição index
-        localStorage.setItem('meuHistoricoApostas', JSON.stringify(historico));
-        renderizarTabela(); // Atualiza a tela
+    if (historico.length === 0) {
+        alert("Não há nada para limpar.");
+        return;
     }
+
+    const confirmar = confirm("⚠️ Isso apagará TODO o histórico. Deseja continuar?");
+
+    if (!confirmar) return;
+
+    localStorage.removeItem('meuHistoricoApostas');
+
+    renderizarTabela();
+
+    alert("🧹 Histórico apagado com sucesso!");
 }
 
 function validarPlacar(index) {
+
     let historico = JSON.parse(localStorage.getItem('meuHistoricoApostas')) || [];
     let jogo = historico[index];
+
+    if (!jogo) return;
+
     const bancaBase = 100;
 
-    const gC = parseInt(document.getElementById(`resC-${index}`).value);
-    const gF = parseInt(document.getElementById(`resF-${index}`).value);
+    const gC = parseInt(document.getElementById(`resC-${index}`)?.value);
+    const gF = parseInt(document.getElementById(`resF-${index}`)?.value);
 
-    if (isNaN(gC) || isNaN(gF)) return alert("Preencha o placar!");
+    if (isNaN(gC) || isNaN(gF)) {
+        alert("Preencha o placar!");
+        return;
+    }
 
-    // ATUALIZAÇÃO DO NOME COM O PLACAR
-    // Remove placares antigos se houver e coloca o novo
-    let nomeLimpo = jogo.time.split(" (")[0];
-    jogo.time = `${nomeLimpo} (${gC} x ${gF})`;
-
+    // 🔥 SALVA O PLACAR (ESSENCIAL)
     jogo.golsC = gC;
     jogo.golsF = gF;
 
-    let deuGreen = false;
+    let nomeLimpo = jogo.time.split(" (")[0];
+    jogo.time = `${nomeLimpo} (${gC} x ${gF})`;
+
     const totalGols = gC + gF;
     const aposta = jogo.principal;
 
-    if (aposta === "Over 2.5" && totalGols > 2.5) deuGreen = true;
+    let deuGreen = false;
+
+    if (aposta === "Over 2.5" && totalGols > 2) deuGreen = true;
     else if (aposta === "BTTS" && gC > 0 && gF > 0) deuGreen = true;
     else if (aposta === "Casa" && gC > gF) deuGreen = true;
     else if (aposta === "Empate" && gC === gF) deuGreen = true;
     else if (aposta === "Fora" && gF > gC) deuGreen = true;
 
-    let valorApostado = bancaBase * (Number(jogo.stake) / 100);
+    let stake = Number(jogo.stake) || 0;
+    let valorApostado = 100 * (stake / 100);
 
     if (deuGreen) {
         jogo.lucro = (Number(jogo.odd) - 1) * valorApostado;
@@ -404,15 +411,24 @@ function validarPlacar(index) {
 }
 
 function exportarCSV() {
-    const historico = JSON.parse(localStorage.getItem('meuHistoricoApostas')) || [];
-    if (historico.length === 0) return alert("Não há dados para exportar!");
 
-    // Cabeçalho da planilha
-    let csv = "Analise do Time;Valor EV;Odd;Stake;Casa;Empate;Fora;BTTS;Over 2.5;Exp Gols;Aposta Principal;Resultado;Lucro (R$)\n";
+    const historico = JSON.parse(localStorage.getItem('meuHistoricoApostas')) || [];
+
+    if (historico.length === 0) {
+        alert("Não há dados para exportar!");
+        return;
+    }
+
+    // 🔥 CABEÇALHO COMPLETO
+    let csv = "Time;EV;Odd;Stake;Casa;Empate;Fora;BTTS;Over 2.5;Exp Gols;Aposta;Placar;Lucro\n";
 
     historico.forEach(j => {
-        // Organiza as colunas separadas por ponto e vírgula (padrão Excel Brasil)
-        csv += `${j.time};`;
+
+        const placar = (j.golsC !== undefined && j.golsF !== undefined)
+            ? `${j.golsC} x ${j.golsF}`
+            : "-";
+
+        csv += `${j.time || ""};`;
         csv += `${Number(j.ev).toFixed(2)};`;
         csv += `${Number(j.odd).toFixed(2)};`;
         csv += `${Number(j.stake).toFixed(1)}%;`;
@@ -422,67 +438,90 @@ function exportarCSV() {
         csv += `${Number(j.pB).toFixed(1)}%;`;
         csv += `${Number(j.pO).toFixed(1)}%;`;
         csv += `${Number(j.expGols).toFixed(2)};`;
-        csv += `${j.principal};`;
-        csv += `${j.resultado};`;
+        csv += `${j.principal || ""};`;
+        csv += `${placar};`;
         csv += `${Number(j.lucro).toFixed(2)}\n`;
     });
 
-    // Cria o arquivo para download
     const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
+
     const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `relatorio_apostas_${new Date().toLocaleDateString().replace(/\//g, '-')}.csv`);
+    link.href = url;
+    link.download = `relatorio_${new Date().toLocaleDateString().replace(/\//g, '-')}.csv`;
+
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
 }
 
-
-// Função para preencher com um cenário de exemplo (ex: Flamengo vs Palmeiras)
-function preencherExemplo() {
-    // 1. ODDS DO MERCADO
-    document.getElementById('oddCasa').value = "2.05";
-    document.getElementById('oddEmpate').value = "3.40";
-    document.getElementById('oddFora').value = "3.80";
-    document.getElementById('oddOver').value = "1.90";
-    document.getElementById('oddUnder').value = "1.90";
-    document.getElementById('oddBTTS').value = "1.72";
-
-    // 2. DADOS TIME CASA (IDs corrigidos conforme seu HTML)
-    document.getElementById('golsMCasa').value = "2,1,1,0,3";
-    document.getElementById('golsSCasa').value = "0,1,1,2,0";
-    document.getElementById('ataqueCasa').value = "1.8";
-    document.getElementById('defesaCasa').value = "1.2";
-
-    // 3. DADOS TIME FORA (IDs corrigidos conforme seu HTML)
-    document.getElementById('golsMFora').value = "1,1,2,0,1";
-    document.getElementById('golsSFora').value = "1,2,1,1,3";
-    document.getElementById('ataqueFora').value = "1.4";
-    document.getElementById('defesaFora').value = "1.6";
-
-    // 4. NOME DO JOGO
-    document.getElementById('nomeJogo').value = "Flamengo x Vasco";
-
-    console.log("Exemplo carregado com sucesso!");
-}
-
-
-// Função para limpar todos os campos
 function limparCampos() {
-    const inputs = document.querySelectorAll('input');
-    inputs.forEach(input => input.value = "");
-
-    const selects = document.querySelectorAll('select');
-    selects.forEach(select => select.selectedIndex = 0);
-
-    document.getElementById('resultado').style.display = 'none';
+    document.querySelectorAll('input').forEach(i => i.value = "");
+    document.querySelectorAll('select').forEach(s => s.selectedIndex = 0);
     document.getElementById('painelResultado').innerHTML = "";
+}
 
-    console.log("Formulário limpo!");
+window.onload = renderizarTabela;
+
+// EXEMPLO
+function preencherExemplo() {
+
+    const set = (id, val) => {
+        const el = document.getElementById(id);
+        if (!el) {
+            console.warn(`Campo não encontrado: ${id}`);
+            return;
+        }
+        el.value = val;
+    };
+
+    // 🔥 ODDS (formato com ponto para evitar NaN)
+    set('oddCasa', "2.05");
+    set('oddEmpate', "3.40");
+    set('oddFora', "3.80");
+    set('oddOver', "1.90");
+    set('oddBTTS', "1.72");
+
+    // 🏠 CASA
+    set('golsMCasa', "2,1,1,0,3");
+    set('golsSCasa', "0,1,1,2,0");
+    set('ataqueCasa', "1.8");
+    set('defesaCasa', "1.2");
+
+    // 🚀 FORA
+    set('golsMFora', "1,1,2,0,1");
+    set('golsSFora', "1,2,1,1,3");
+    set('ataqueFora', "1.2");
+    set('defesaFora', "1.6");
+
+    // ⚙️ AJUSTES
+    set('mediaLiga', "2.5");
+
+    // 🔥 MOTIVAÇÃO REAL (corrigida)
+    set('motivacao', "0.90"); // decisivo = menos gols
+
+    // 🏷️ NOME DO JOGO
+    set('nomeJogo', "Flamengo x Palmeiras");
+
+    // 🔥 LIMPA RESULTADO ANTIGO
+    const painel = document.getElementById('painelResultado');
+    if (painel) painel.innerHTML = "";
+
+    console.log("✅ Exemplo carregado corretamente");
 }
 
 
+// LIMPAR FORMULÁRIO
+function limparCampos() {
+
+    document.querySelectorAll('input').forEach(i => i.value = "");
+    document.querySelectorAll('select').forEach(s => s.selectedIndex = 0);
+
+    const painel = document.getElementById('painelResultado');
+    if (painel) painel.innerHTML = "";
+
+    console.log("Campos limpos");
+}
 
 
 

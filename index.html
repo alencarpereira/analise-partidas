@@ -179,8 +179,9 @@
                     <label>Motivação / Importância</label>
                     <select id="motivacao">
                         <option value="1">Normal (1.0)</option>
-                        <option value="1.1">Decisivo (1.1)</option>
-                        <option value="0.8">Amistoso (0.8)</option>
+                        <option value="0.92">Clássico (0.92)</option>
+                        <option value="0.88">Mata-mata (0.88)</option>
+                        <option value="1.08">Amistoso (1.08)</option>
                     </select>
                 </div>
                 <div class="input-group">
@@ -204,33 +205,29 @@
             </small>
         </div>
 
-        <div class="card" style="margin-top: 15px;">
-            <label style="font-weight: bold;">⚔️ Confronto (Times):</label>
-            <input type="text" id="nomeJogo" placeholder="Ex: Flamengo x Vasco"
-                style="width: 100%; padding: 10px; margin-top: 5px; border-radius: 5px; border: 1px solid #ccc;">
+        <button class="btn-analisar" onclick="executarAnalise()"
+            style="width:100%; padding:15px; background:#1a237e; color:white; border:none; border-radius:8px; font-size:1.1em; cursor:pointer;">
+            CALCULAR PROBABILIDADE & VALOR
+        </button>
+        <br>
+        <br>
+
+        <div class="flex-row" style="margin-bottom: 15px;">
+            <button onclick="preencherExemplo()"
+                style="flex: 1; padding: 10px; background: #546e7a; color: white; border: none; border-radius: 8px; cursor: pointer;">
+                🧪 Preencher Exemplo
+            </button>
+            <button onclick="limparCampos()"
+                style="flex: 1; padding: 10px; background: #d32f2f; color: white; border: none; border-radius: 8px; cursor: pointer;">
+                🧹 Limpar Tudo
+            </button>
         </div>
 
-        <button class="btn-analisar" onclick="executarAnalise()" ...>
-
-
-            <button class="btn-analisar" onclick="executarAnalise()"
-                style="width:100%; padding:15px; background:#1a237e; color:white; border:none; border-radius:8px; font-size:1.1em; cursor:pointer;">
-                CALCULAR PROBABILIDADE & VALOR
-            </button>
-            <br>
-            <br>
-
-            <div class="flex-row" style="margin-bottom: 15px;">
-                <button onclick="preencherExemplo()"
-                    style="flex: 1; padding: 10px; background: #546e7a; color: white; border: none; border-radius: 8px; cursor: pointer;">
-                    🧪 Preencher Exemplo
-                </button>
-                <button onclick="limparCampos()"
-                    style="flex: 1; padding: 10px; background: #d32f2f; color: white; border: none; border-radius: 8px; cursor: pointer;">
-                    🧹 Limpar Tudo
-                </button>
+        <div id="resultado" style="margin-top:20px;">
+            <div id="painelResultado"
+                style="background:white; padding:15px; border-radius:8px; box-shadow:0 2px 10px rgba(0,0,0,0.1);">
             </div>
-
+        </div>
         <!-- RELATÓRIO -->
         <div class="card" style="overflow-x: auto; margin-top: 20px;">
             <h3>📊 Relatório Geral de Apostas</h3>
