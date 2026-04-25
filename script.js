@@ -238,6 +238,7 @@ function exibirResultados(
 
     painel.innerHTML = html;
 }
+
 function salvarResultado() {
 
     console.log("🚨 salvarResultado chamada");
@@ -327,18 +328,6 @@ function renderizarTabela() {
 
     document.getElementById('saldoAtual').innerText =
         `Saldo Atual: R$ ${saldoAtual.toFixed(2)}`;
-}
-
-function salvarResultado() {
-
-    if (!window.dadosTemp) return alert("Sem análise");
-
-    let hist = JSON.parse(localStorage.getItem('meuHistoricoApostas')) || [];
-    hist.unshift(window.dadosTemp);
-
-    localStorage.setItem('meuHistoricoApostas', JSON.stringify(hist));
-
-    renderizarTabela();
 }
 
 function validarPlacar(index) {
