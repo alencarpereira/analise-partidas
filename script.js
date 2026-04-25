@@ -118,29 +118,29 @@ function executarAnalise() {
     const kO = kelly(pO, mercado.over);
     const kU = kelly(pU, mercado.under); // 🔥 FALTAVA ISSO
 
+    // ... (mantenha os cálculos anteriores)
+
+    // CHAMADA CORRIGIDA: Agora passando os dados do Under
     exibirResultados(
         pC * 100, pE * 100, pF * 100,
-        pB * 100, pO * 100,
-        evC, evB, evO,
-        kC, kB, kO,
+        pB * 100, pO * 100, pU * 100, // <--- Adicionado pU
+        evC, evB, evO, evU,           // <--- Adicionado evU
+        kC, kB, kO, kU,               // <--- Adicionado kU
         lambdaCasa + lambdaFora
     );
 
-    // depois vem evList
     let evList = [
         { nome: "Casa", ev: evC, odd: mercado.casa, stake: kC },
         { nome: "Empate", ev: evE, odd: mercado.empate, stake: kE },
         { nome: "BTTS", ev: evB, odd: mercado.btts, stake: kB },
         { nome: "Over 2.5", ev: evO, odd: mercado.over, stake: kO },
-        { nome: "Under 2.5", ev: evU, odd: mercado.under, stake: kU } // ✅ AQUI
+        { nome: "Under 2.5", ev: evU, odd: mercado.under, stake: kU }
     ];
 
     evList.sort((a, b) => b.ev - a.ev);
-
     let melhor = evList[0];
 
     const threshold = 0.05;
-
     if (melhor.ev < threshold) {
         melhor = { nome: "Sem valor", ev: 0, odd: 0, stake: 0 };
     }
@@ -155,13 +155,14 @@ function executarAnalise() {
         pF: pF * 100,
         pB: pB * 100,
         pO: pO * 100,
-        pU: pU * 100,
+        pU: pU * 100, // ✅ Já estava certo aqui
         expGols: lambdaCasa + lambdaFora,
         principal: melhor.nome,
         lucro: 0,
         resultado: "Pendente"
     };
 }
+
 
 function exibirResultados(
     pC, pE, pF,
@@ -331,7 +332,6 @@ function renderizarTabela() {
 }
 
 function validarPlacar(index) {
-
     let hist = JSON.parse(localStorage.getItem('meuHistoricoApostas')) || [];
     let jogo = hist[index];
 
@@ -348,12 +348,14 @@ function validarPlacar(index) {
 
     const total = gC + gF;
     const aposta = jogo.principal;
-
     let green = false;
 
+    // Lógica de validação atualizada
     if (aposta === "Over 2.5" && total > 2) green = true;
+    else if (aposta === "Under 2.5" && total < 3) green = true; // <--- Importante para o Under aparecer
     else if (aposta === "BTTS" && gC > 0 && gF > 0) green = true;
     else if (aposta === "Casa" && gC > gF) green = true;
+    else if (aposta === "Fora" && gF > gC) green = true;
     else if (aposta === "Empate" && gC === gF) green = true;
 
     let stake = Number(jogo.stake) || 0;
@@ -370,6 +372,7 @@ function validarPlacar(index) {
     localStorage.setItem('meuHistoricoApostas', JSON.stringify(hist));
     renderizarTabela();
 }
+
 
 function exportarCSV() {
 
