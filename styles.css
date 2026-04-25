@@ -1,218 +1,177 @@
-    :root {
-        --primary: #1a237e;
-        --accent: #00c853;
-        --warning: #ffd600;
-        --bg: #f4f7f6;
-    }
+:root {
+    --primary: #1a237e;
+    --accent: #00c853;
+    --warning: #ffd600;
+    --danger: #d32f2f;
+    --bg: #f4f7f6;
+    --white: #ffffff;
+}
 
-    body {
-        font-family: 'Segoe UI', sans-serif;
-        background: var(--bg);
-        color: #333;
-        margin: 0;
-        padding: 20px;
-    }
+/* 1. RESET E ESTRUTURA */
+html,
+body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    background: var(--bg);
+}
 
-    .container {
-        width: 100%;
-        max-width: 1400px;
-        /* ou remove se quiser full total */
-        margin: auto;
-    }
+body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    color: #333;
+    padding: 20px;
+    box-sizing: border-box;
+}
 
+.container {
+    width: 100% !important;
+    max-width: 100% !important;
+}
 
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 20px;
+}
 
-    .grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 20px;
-    }
+/* 2. CARDS */
+.card {
+    background: var(--white);
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+    overflow-x: auto;
+}
 
-    .card {
-        background: white;
-        padding: 20px;
-        border-radius: 12px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        margin-bottom: 20px;
-    }
+h2,
+h3 {
+    color: var(--primary);
+    margin: 0 0 15px 0;
+    font-size: 1.2em;
+}
 
-    h2,
-    h3 {
-        color: var(--primary);
-        margin-top: 0;
-    }
+/* 3. FORMULÁRIOS DE ENTRADA (Cima) */
+.input-group {
+    margin-bottom: 15px;
+}
 
-    .input-group {
-        margin-bottom: 15px;
-    }
+label {
+    display: block;
+    font-size: 0.9em;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
 
-    label {
-        display: block;
-        font-size: 0.9em;
-        font-weight: bold;
-        margin-bottom: 5px;
-    }
+input,
+select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    box-sizing: border-box;
+    font-size: 0.95em;
+}
 
-    input {
-        width: 100%;
-        padding: 8px;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        box-sizing: border-box;
-    }
+.btn-analisar {
+    width: 100%;
+    padding: 15px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.1em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.3s;
+}
 
-    /* --- AJUSTES EXCLUSIVOS DA TABELA --- */
+.btn-analisar:hover {
+    background: #283593;
+    transform: translateY(-2px);
+}
 
-    /* 1. Card do Relatório: Garante que ocupe a largura e tenha respiro */
-    .card:has(table) {
-        width: 100%;
-        overflow-x: auto;
-        padding: 15px;
-        /* Compactado */
-    }
+/* 4. TABELA DE RELATÓRIO (Ajustada) */
+table {
+    width: 100%;
+    min-width: 1200px;
+    border-collapse: collapse;
+    font-size: 0.85em;
+    margin-top: 10px;
+}
 
-    /* 2. Estrutura da Tabela: 30% mais compacta e larga */
-    table {
-        width: 100%;
-        min-width: 1200px;
-        /* Garante espaço para o traçado não amontoar */
-        border-collapse: collapse;
-        font-size: 0.85em;
-        /* Redução de tamanho de fonte */
-        margin-top: 10px;
-    }
+th {
+    background: var(--primary);
+    color: white;
+    padding: 10px 5px;
+    text-transform: uppercase;
+    font-size: 0.75em;
+}
 
-    th {
-        background: var(--primary);
-        color: white;
-        padding: 8px 4px;
-        font-weight: 600;
-        text-transform: uppercase;
-        font-size: 0.75em;
-    }
+td {
+    padding: 8px 4px;
+    border-bottom: 1px solid #eee;
+    text-align: center;
+}
 
-    td {
-        padding: 6px 4px;
-        /* Linhas 30% mais finas */
-        border-bottom: 1px solid #eee;
-        text-align: center;
-    }
+/* 5. INPUTS DE PLACAR (ESTILO TRAÇADO) */
+#corpoTabela input {
+    border: none !important;
+    border-bottom: 2px solid var(--primary) !important;
+    /* A linha amarela do editor some aqui */
+    background: transparent !important;
+    border-radius: 0 !important;
+    width: 45px !important;
+    height: 28px;
+    padding: 0;
+    text-align: center;
+    color: #333;
+    font-weight: bold;
+    font-size: 1em;
+}
 
-    /* 3. Inputs da Tabela: Estilo Traçado (Underline) */
-    #corpoTabela input {
-        border: none !important;
-        border-bottom: 2px solid var(--primary) !important;
-        background: transparent !important;
-        border-radius: 0 !important;
-        width: 40px !important;
-        /* Mais curto */
-        height: 25px;
-        padding: 0;
-        text-align: center;
-        color: #333;
-        font-weight: bold;
-        font-size: 0.9em;
-    }
+#corpoTabela input:focus {
+    outline: none;
+    border-bottom: 2px solid var(--accent) !important;
+}
 
-    #corpoTabela input:focus {
-        outline: none;
-        border-bottom: 2px solid var(--accent) !important;
-        background: rgba(0, 200, 83, 0.05) !important;
-    }
+/* 6. BOTÕES E UTILS */
+#corpoTabela button {
+    padding: 5px 10px;
+    font-size: 0.85em;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    background: var(--accent);
+    color: white;
+}
 
-    /* 4. Botões da Tabela: Mais compactos */
-    #corpoTabela button {
-        padding: 4px 8px;
-        font-size: 0.85em;
-        border-radius: 4px;
-        border: none;
-        cursor: pointer;
-        background: var(--accent);
-        color: white;
-        transition: 0.2s;
-    }
+#corpoTabela td:nth-last-child(3) {
+    min-width: 160px;
+}
 
-    /* 5. Colunas específicas: Espaçamento para o Placar */
-    #corpoTabela td:nth-last-child(3) {
-        min-width: 150px;
-        /* Dá espaço para os inputs com traçado */
-    }
+/* Coluna placar */
+#corpoTabela td:nth-last-child(2) {
+    font-weight: bold;
+    color: #2e7d32;
+}
 
-    /* 6. Linha do lucro em negrito */
-    #corpoTabela td:nth-last-child(2) {
-        font-weight: bold;
-        color: #2e7d32;
-    }
+/* Coluna lucro */
 
+/* 7. RESET DE SETAS (Unificado para não dar erro) */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
 
-    .btn-analisar {
-        width: 100%;
-        padding: 15px;
-        background: var(--primary);
-        color: white;
-        border: none;
-        border-radius: 8px;
-        font-size: 1.1em;
-        cursor: pointer;
-        transition: 0.3s;
-    }
+input[type=number] {
+    -moz-appearance: textfield;
+    appearance: none;
+    /* Adicionado para compatibilidade moderna */
+}
 
-    .btn-analisar:hover {
-        background: #283593;
-    }
-
-    .badge-valor {
-        background: var(--accent);
-        color: white;
-        padding: 5px 10px;
-        border-radius: 4px;
-        font-size: 0.8em;
-    }
-
-    .resultado-box {
-        display: none;
-        margin-top: 20px;
-        border-left: 5px solid var(--accent);
-    }
-
-    .flex-row {
-        display: flex;
-        gap: 10px;
-    }
-
-    table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 10px;
-        background: white;
-        border-radius: 8px;
-        overflow: hidden;
-    }
-
-
-    /* Ajuste específico para os campos de placar na tabela */
-    input[type=number] {
-        appearance: textfield;
-        -moz-appearance: textfield;
-        /* Para Firefox */
-    }
-
-    input::-webkit-outer-spin-button,
-    input::-webkit-inner-spin-button {
-        -webkit-appearance: none;
-        /* Remove setas no Chrome/Edge */
-        margin: 0;
-    }
-
-    #corpoTabela input {
-        border: 1px solid #999;
-        background: white;
-        color: #333;
-        font-weight: bold;
-    }
-
-    /* Deixa os botões da tabela com aspecto de "clicáveis" */
-    #corpoTabela button:hover {
-        filter: brightness(1.2);
-        transform: scale(1.05);
-    }
+.flex-row {
+    display: flex;
+    gap: 10px;
+}
