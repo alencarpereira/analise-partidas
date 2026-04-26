@@ -33,12 +33,14 @@ function executarAnalise() {
     const formaCasa = media('golsMCasa');
     const formaFora = media('golsMFora');
 
-    // 🔒 SUAVIZAÇÃO MAIS RÍGIDA (Peso menor para o desempenho individual)
+    // 🔒 SUAVIZAÇÃO DINÂMICA
+    // Agora o peso se ajusta: ligas com mais gols permitem que o ataque individual apareça mais
     const suavizar = (valor, mediaLiga) => {
-        const pesoForma = 0.25; // Era 0.40 (Diminuído)
-        const pesoLiga = 0.75;  // Era 0.60 (Aumentado)
+        const pesoForma = 0.30;
+        const pesoLiga = 0.70;
         let ajustado = (valor * pesoForma) + (mediaLiga * pesoLiga);
-        return Math.max(ajustado, 0.5); // Piso subiu de 0.3 para 0.5 para evitar Under extremo
+        // O piso agora é 25% da média da liga, evitando Under extremo em ligas over
+        return Math.max(ajustado, mediaLiga * 0.25);
     };
 
     const ataqueCasaSafe = suavizar(ataqueCasa, mediaLiga);
@@ -71,10 +73,11 @@ function executarAnalise() {
     lambdaCasa *= 1.01;
     lambdaFora *= 1.01;
 
-    // 🚧 LIMITADOR DE GOLS (Mais estreito)
+    // 🚧 LIMITADOR DE GOLS DINÂMICO (A grande mudança)
+    // Em vez de 2.1 e 3.0 fixos, usamos margens baseadas na própria liga escolhida
     let total = lambdaCasa + lambdaFora;
-    let minGols = 2.1;
-    let maxGols = 3.0;
+    let minGols = mediaLiga * 0.85; // Permite até 15% abaixo da média
+    let maxGols = mediaLiga * 1.25; // Permite até 25% acima da média
 
     if (total > maxGols) {
         const f = maxGols / total;
@@ -86,7 +89,6 @@ function executarAnalise() {
         lambdaCasa *= f;
         lambdaFora *= f;
     }
-
     // 📐 POISSON (Mantido)
     const fatorial = n => { let r = 1; for (let i = 2; i <= n; i++) r *= i; return r; };
     const poisson = (l, k) => (Math.exp(-l) * Math.pow(l, k)) / fatorial(k);
@@ -166,10 +168,14 @@ function exibirResultados(
     const painel = document.getElementById('painelResultado');
     if (!painel) return;
 
+    // --- FILTRO DE SEGURANÇA ADICIONAL ---
+    // Aplica o bloqueio de Under antes de começar a gerar o HTML
+    if (melhor.nome === "Under 2.5" && (pUnder < 58 || evU < 0.08)) {
+        melhor = { nome: "Sem valor", ev: 0, odd: 0, stake: 0 };
+    }
+
     const linha = (nome, prob, ev = null) => {
         let cor = "#333";
-
-        // 🔧 CORREÇÃO: prob já vem em %
         if (prob >= 60) cor = "#2e7d32";
         else if (prob <= 40) cor = "#c62828";
 
@@ -198,100 +204,101 @@ function exibirResultados(
         <p>🔢 Gols esperados: <b>${totalGols.toFixed(2)}</b></p>
     `;
 
-    // 🎯 RESULTADO FINAL (SEM QUEBRAR SUA LÓGICA)
-    if (melhor.nome && melhor.nome.includes("Anomalia")) {
-        html += `
-        <div style="margin-top:15px;padding:12px;background:#fff3e0;border-radius:8px;border-left:5px solid #ff9800;">
-            <b>${melhor.nome}</b><br>
-            EV Bruto: <b>${(melhor.ev || 0).toFixed(2)}</b><br>
-            <small>Valor suspeito detectado.</small>
-        </div>`;
-    } // 🚫 BLOQUEIO INTELIGENTE DE UNDER
-    if (melhor.nome === "Under 2.5" && (pUnder < 58 || evU < 0.08)) {
-        melhor = { nome: "Sem valor", ev: 0, odd: 0, stake: 0 };
-    }
-    else if (!melhor.nome || melhor.nome === "Sem valor") {
-        html += `
+    // --- ÁREA DE RESULTADO FINAL ---
+    let cartaoResultado = "";
+
+    if (!melhor.nome || melhor.nome === "Sem valor") {
+        cartaoResultado = `
         <div style="margin-top:15px;padding:12px;background:#ffebee;border-radius:8px;border-left:5px solid #c62828;">
             ⚠️ Nenhuma aposta com valor matemático
         </div>`;
+        window.dadosTemp = null; // Bloqueia salvamento
     }
-    else {
-        html += `
-        <div style="margin-top:15px;padding:12px;background:#e8f5e9;border-radius:8px;border-left:5px solid #2e7d32;">
-            <b>🎯 Melhor Aposta (Sweet Spot):</b> ${melhor.nome}<br>
-            EV: <b>${(melhor.ev || 0).toFixed(2)}</b> | Stake: <b>${(melhor.stake || 0).toFixed(1)}%</b>
+    else if (melhor.nome.includes("Anomalia")) {
+        cartaoResultado = `
+        <div style="margin-top:15px;padding:12px;background:#fff3e0;border-radius:8px;border-left:5px solid #ff9800;">
+            <b>⚠️ ${melhor.nome}</b><br>
+            EV Bruto: <b>${(melhor.ev || 0).toFixed(2)}</b><br>
+            <small>Valor suspeito detectado.</small>
         </div>`;
     }
+    else {
+        cartaoResultado = `
+        <div style="margin-top:15px;padding:12px;background:#e8f5e9;border-radius:8px;border-left:5px solid #2e7d32;">
+            <b>🎯 Melhor Aposta:</b> ${melhor.nome}<br>
+            EV: <b>${(melhor.ev || 0).toFixed(2)}</b> | Stake: <b>${(melhor.stake || 0).toFixed(1)}%</b>
+        </div>`;
+
+        // SALVAR DADOS APENAS SE TIVER VALOR
+        window.dadosTemp = {
+            time: document.getElementById('nomeJogo')?.value || "Jogo",
+            ev: melhor.ev,
+            odd: melhor.odd,
+            stake: melhor.stake,
+            pC, pE, pF, pB: pBTTS, pO: pOver, pU: pUnder,
+            expGols: totalGols,
+            principal: melhor.nome,
+            lucro: 0
+        };
+    }
+
+    html += cartaoResultado;
+
+    // Botão de salvar (só habilitado se houver valor)
+    const btnDisabled = (!melhor.nome || melhor.nome === "Sem valor") ? "opacity:0.5; cursor:not-allowed;" : "";
 
     html += `
-    <button onclick="salvarResultado()"
-        style="margin-top:15px;width:100%;padding:12px;background:#1a237e;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:bold;">
+    <button onclick="${window.dadosTemp ? 'salvarResultado()' : 'alert(\'Sem valor para salvar\')'}"
+        style="margin-top:15px;width:100%;padding:12px;background:#1a237e;color:#fff;border:none;border-radius:8px;font-weight:bold; ${btnDisabled}">
         💾 SALVAR NA TABELA
     </button>`;
 
     painel.innerHTML = html;
-
-    // 🚫 BLOQUEIA SALVAMENTO SE NÃO TEM VALOR
-    if (melhor.nome === "Sem valor") {
-        window.dadosTemp = null;
-        return;
-    }
-
-    // 💾 SALVAR DADOS TEMPORÁRIOS
-    window.dadosTemp = {
-        time: document.getElementById('nomeJogo')?.value || "Jogo",
-
-        ev: melhor.ev,
-        odd: melhor.odd,
-        stake: melhor.stake,
-
-        pC: pC,
-        pE: pE,
-        pF: pF,
-        pB: pBTTS,
-        pO: pOver,
-        pU: pUnder,
-
-        expGols: totalGols,
-
-        principal: melhor.nome,
-
-        lucro: 0
-    };
 }
 
 
-function salvarResultado() {
 
+function salvarResultado() {
     console.log("🚨 salvarResultado chamada");
 
     if (!window.dadosTemp) {
-        alert("Nenhuma análise para salvar!");
+        alert("Nenhuma análise válida para salvar!");
         return;
     }
 
     const confirmar = window.confirm(
-        "Deseja salvar esta análise?"
+        `Deseja salvar a análise de: ${window.dadosTemp.time}?`
     );
 
-    console.log("Resultado confirmação:", confirmar);
-
-    if (confirmar !== true) {
+    if (!confirmar) {
         console.log("❌ cancelado");
         return;
     }
 
-    let historico = JSON.parse(localStorage.getItem('meuHistoricoApostas')) || [];
+    try {
+        let historico = JSON.parse(localStorage.getItem('meuHistoricoApostas')) || [];
 
-    historico.unshift(window.dadosTemp);
+        // Adiciona ao início da lista
+        historico.unshift(window.dadosTemp);
 
-    localStorage.setItem('meuHistoricoApostas', JSON.stringify(historico));
+        // Salva de volta no LocalStorage
+        localStorage.setItem('meuHistoricoApostas', JSON.stringify(historico));
 
-    renderizarTabela();
+        // Limpa o dado temporário para evitar duplicatas
+        window.dadosTemp = null;
 
-    console.log("✅ salvo");
+        // Atualiza a interface
+        renderizarTabela();
+
+        console.log("✅ salvo com sucesso");
+        alert("Análise salva no histórico!");
+
+    } catch (e) {
+        console.error("Erro ao salvar no localStorage", e);
+        alert("Erro ao salvar! Verifique se o navegador permite cookies/armazenamento.");
+    }
 }
+
 
 window.executarAnalise = executarAnalise;
 window.exibirResultados = exibirResultados;
@@ -448,18 +455,12 @@ function limparCampos() {
 }
 
 function excluir(index) {
-
-    const confirmar = confirm("Deseja excluir este registro?");
-
-    if (!confirmar) return;
-
-    let hist = JSON.parse(localStorage.getItem('meuHistoricoApostas')) || [];
-
-    hist.splice(index, 1);
-
-    localStorage.setItem('meuHistoricoApostas', JSON.stringify(hist));
-
-    renderizarTabela();
+    if (confirm("Tem certeza que deseja excluir esta análise?")) {
+        let hist = JSON.parse(localStorage.getItem('meuHistoricoApostas')) || [];
+        hist.splice(index, 1);
+        localStorage.setItem('meuHistoricoApostas', JSON.stringify(hist));
+        renderizarTabela();
+    }
 }
 
 function limparHistorico() {
