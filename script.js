@@ -21,6 +21,7 @@ function executarAnalise() {
     const defesaFora = getVal('defesaFora');
     const mediaLiga = getVal('mediaLiga') || 2.5;
 
+    // 📊 FORMA
     const media = id => {
         const el = document.getElementById(id);
         if (!el || !el.value) return 0;
@@ -32,13 +33,26 @@ function executarAnalise() {
     const formaCasa = media('golsMCasa');
     const formaFora = media('golsMFora');
 
-    // ✅ NORMALIZAÇÃO
-    const ataqueCasaAdj = ataqueCasa / mediaLiga;
-    const defesaCasaAdj = defesaCasa / mediaLiga;
-    const ataqueForaAdj = ataqueFora / mediaLiga;
-    const defesaForaAdj = defesaFora / mediaLiga;
+    // 🔒 SUAVIZAÇÃO (ANTI-EXTREMO)
+    const suavizar = (valor, mediaLiga) => {
+        const pesoForma = 0.4;
+        const pesoLiga = 0.6;
+        let ajustado = (valor * pesoForma) + (mediaLiga * pesoLiga);
+        return Math.max(ajustado, 0.3);
+    };
 
-    // 🎯 LAMBDAS (ANTI-UNDER)
+    const ataqueCasaSafe = suavizar(ataqueCasa, mediaLiga);
+    const defesaCasaSafe = suavizar(defesaCasa, mediaLiga);
+    const ataqueForaSafe = suavizar(ataqueFora, mediaLiga);
+    const defesaForaSafe = suavizar(defesaFora, mediaLiga);
+
+    // ✅ NORMALIZAÇÃO SEGURA
+    const ataqueCasaAdj = ataqueCasaSafe / mediaLiga;
+    const defesaCasaAdj = defesaCasaSafe / mediaLiga;
+    const ataqueForaAdj = ataqueForaSafe / mediaLiga;
+    const defesaForaAdj = defesaForaSafe / mediaLiga;
+
+    // 🎯 LAMBDAS
     let lambdaCasa = ataqueCasaAdj * (defesaForaAdj * 0.90) * mediaLiga * 1.05;
     let lambdaFora = ataqueForaAdj * (defesaCasaAdj * 0.90) * mediaLiga;
 
@@ -58,7 +72,7 @@ function executarAnalise() {
     lambdaCasa *= 1.03;
     lambdaFora *= 1.03;
 
-    // 🚧 LIMITADOR
+    // 🚧 LIMITADOR DE GOLS
     let total = lambdaCasa + lambdaFora;
 
     let minGols = motivacao > 1 ? 2.5 : (motivacao < 1 ? 2.0 : 2.4);
@@ -102,11 +116,21 @@ function executarAnalise() {
         }
     }
 
-    // ✅ NORMALIZAÇÃO CORRETA
+    // ✅ NORMALIZAÇÃO FINAL
     pC /= soma; pF /= soma; pE /= soma;
     pO /= soma; pU /= soma; pB /= soma;
 
-    // 🔥 AJUSTE FINAL ANTI-UNDER (AGORA NO LUGAR CERTO)
+    // 🚧 LIMITADOR DE EXTREMOS
+    pC = Math.min(pC, 0.80);
+    pF = Math.max(pF, 0.05);
+
+    // 🔄 REAJUSTE 1X2
+    let soma1x2 = pC + pE + pF;
+    pC /= soma1x2;
+    pE /= soma1x2;
+    pF /= soma1x2;
+
+    // 🔥 AJUSTE FINAL ANTI-UNDER
     pU *= 0.97;
     pO *= 1.03;
 
@@ -139,23 +163,33 @@ function executarAnalise() {
     const EV_IDEAL = 0.12;
 
     let evList = [
-        { nome: "Casa", ev: evC, odd: mercado.casa, stake: kC },
-        { nome: "Empate", ev: evE, odd: mercado.empate, stake: kE },
-        { nome: "Fora", ev: evF, odd: mercado.fora, stake: kF },
-        { nome: "BTTS", ev: evB, odd: mercado.btts, stake: kB },
-        { nome: "Over 2.5", ev: evO, odd: mercado.over, stake: kO },
-        { nome: "Under 2.5", ev: evU, odd: mercado.under, stake: kU }
+        { nome: "Casa", ev: evC, prob: pC, odd: mercado.casa, stake: kC },
+        { nome: "Empate", ev: evE, prob: pE, odd: mercado.empate, stake: kE },
+        { nome: "Fora", ev: evF, prob: pF, odd: mercado.fora, stake: kF },
+        { nome: "BTTS", ev: evB, prob: pB, odd: mercado.btts, stake: kB },
+        { nome: "Over 2.5", ev: evO, prob: pO, odd: mercado.over, stake: kO },
+        { nome: "Under 2.5", ev: evU, prob: pU, odd: mercado.under, stake: kU }
     ];
 
-    let candidatos = evList.filter(i => i.ev >= EV_MIN && i.ev <= EV_TETO);
+    // 🔥 FILTRO MAIS INTELIGENTE (EV + CONSISTÊNCIA)
+    let candidatos = evList.filter(i =>
+        i.ev >= EV_MIN &&
+        i.ev <= EV_TETO &&
+        i.prob >= 0.40
+    );
 
+    // 🧠 SCORE HÍBRIDO (EV + CONSISTÊNCIA)
+    candidatos.forEach(i => {
+        i.score = (i.ev * 0.6) + (i.prob * 0.4);
+    });
+
+    // 🏆 ESCOLHA FINAL MAIS INTELIGENTE
     let melhor = { nome: "Sem valor", ev: 0, odd: 0, stake: 0 };
 
     if (candidatos.length > 0) {
-        candidatos.sort((a, b) => Math.abs(a.ev - EV_IDEAL) - Math.abs(b.ev - EV_IDEAL));
+        candidatos.sort((a, b) => b.score - a.score);
         melhor = candidatos[0];
     }
-
     // 📤 OUTPUT
     exibirResultados(
         pC * 100, pE * 100, pF * 100,
