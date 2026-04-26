@@ -1,6 +1,10 @@
 function executarAnalise() {
+
     const getVal = id => parseFloat(document.getElementById(id)?.value) || 0;
-    const motivacao = getVal('motivacao') || 1;
+
+    // 🎯 MOTIVAÇÃO
+    const motivacaoEl = document.getElementById('motivacao');
+    let motivacao = parseFloat(motivacaoEl?.value) || 1;
 
     const mercado = {
         casa: getVal('oddCasa'),
@@ -17,7 +21,6 @@ function executarAnalise() {
     const defesaFora = getVal('defesaFora');
     const mediaLiga = getVal('mediaLiga') || 2.5;
 
-    // Cálculo de média ponderada (forma recente)
     const media = id => {
         const el = document.getElementById(id);
         if (!el || !el.value) return 0;
@@ -29,20 +32,51 @@ function executarAnalise() {
     const formaCasa = media('golsMCasa');
     const formaFora = media('golsMFora');
 
-    const forcaAtaqueCasa = (ataqueCasa - mediaLiga) / mediaLiga;
-    const forcaAtaqueFora = (ataqueFora - mediaLiga) / mediaLiga;
-    const forcaDefesaCasa = (mediaLiga - defesaCasa) / mediaLiga;
-    const forcaDefesaFora = (mediaLiga - defesaFora) / mediaLiga;
+    // ✅ NORMALIZAÇÃO
+    const ataqueCasaAdj = ataqueCasa / mediaLiga;
+    const defesaCasaAdj = defesaCasa / mediaLiga;
+    const ataqueForaAdj = ataqueFora / mediaLiga;
+    const defesaForaAdj = defesaFora / mediaLiga;
 
-    const clamp = x => Math.max(0.3, 1 + x);
-    const ajusteMotivacao = 1 + ((motivacao - 1) * 0.5);
+    // 🎯 LAMBDAS (ANTI-UNDER)
+    let lambdaCasa = ataqueCasaAdj * (defesaForaAdj * 0.90) * mediaLiga * 1.05;
+    let lambdaFora = ataqueForaAdj * (defesaCasaAdj * 0.90) * mediaLiga;
 
-    let lambdaCasa = mediaLiga * clamp(forcaAtaqueCasa) * clamp(forcaDefesaFora) * 1.10 * ajusteMotivacao;
-    let lambdaFora = mediaLiga * clamp(forcaAtaqueFora) * clamp(forcaDefesaCasa) * ajusteMotivacao;
+    lambdaCasa *= motivacao;
+    lambdaFora *= motivacao;
 
-    if (formaCasa > 0) lambdaCasa = lambdaCasa * 0.7 + formaCasa * 0.3;
-    if (formaFora > 0) lambdaFora = lambdaFora * 0.7 + formaFora * 0.3;
+    if (formaCasa > 0) {
+        lambdaCasa *= (1 + ((formaCasa - mediaLiga) / mediaLiga) * 0.15);
+    }
+    if (formaFora > 0) {
+        lambdaFora *= (1 + ((formaFora - mediaLiga) / mediaLiga) * 0.15);
+    }
 
+    lambdaFora *= 1.05;
+
+    // 🚀 BOOST ANTI-UNDER
+    lambdaCasa *= 1.03;
+    lambdaFora *= 1.03;
+
+    // 🚧 LIMITADOR
+    let total = lambdaCasa + lambdaFora;
+
+    let minGols = motivacao > 1 ? 2.5 : (motivacao < 1 ? 2.0 : 2.4);
+    let maxGols = motivacao > 1 ? 3.5 : (motivacao < 1 ? 3.0 : 3.2);
+
+    if (total > maxGols) {
+        const f = maxGols / total;
+        lambdaCasa *= f;
+        lambdaFora *= f;
+    }
+
+    if (total < minGols) {
+        const f = minGols / total;
+        lambdaCasa *= f;
+        lambdaFora *= f;
+    }
+
+    // 📐 POISSON
     const fatorial = n => {
         let r = 1;
         for (let i = 2; i <= n; i++) r *= i;
@@ -53,10 +87,11 @@ function executarAnalise() {
 
     let pC = 0, pF = 0, pE = 0, pO = 0, pB = 0, pU = 0, soma = 0;
 
-    for (let i = 0; i < 7; i++) {
-        for (let j = 0; j < 7; j++) {
+    for (let i = 0; i < 8; i++) {
+        for (let j = 0; j < 8; j++) {
             const p = poisson(lambdaCasa, i) * poisson(lambdaFora, j);
             soma += p;
+
             if (i > j) pC += p;
             else if (i < j) pF += p;
             else pE += p;
@@ -67,9 +102,15 @@ function executarAnalise() {
         }
     }
 
-    pC /= soma; pF /= soma; pE /= soma; pO /= soma; pB /= soma; pU /= soma;
+    // ✅ NORMALIZAÇÃO CORRETA
+    pC /= soma; pF /= soma; pE /= soma;
+    pO /= soma; pU /= soma; pB /= soma;
 
-    // Cálculo de EV (Valor Esperado)
+    // 🔥 AJUSTE FINAL ANTI-UNDER (AGORA NO LUGAR CERTO)
+    pU *= 0.97;
+    pO *= 1.03;
+
+    // 💰 EV
     let evC = (pC * mercado.casa) - 1;
     let evE = (pE * mercado.empate) - 1;
     let evF = (pF * mercado.fora) - 1;
@@ -77,7 +118,7 @@ function executarAnalise() {
     let evO = (pO * mercado.over) - 1;
     let evU = (pU * mercado.under) - 1;
 
-    // Critério de Kelly (0.25 fracionado)
+    // 📊 KELLY
     const kelly = (p, o) => {
         if (!o || o <= 1) return 0;
         const b = o - 1;
@@ -92,10 +133,10 @@ function executarAnalise() {
     const kO = kelly(pO, mercado.over);
     const kU = kelly(pU, mercado.under);
 
-    // --- 🎯 LÓGICA DE FILTRAGEM POR ELIMINAÇÃO ---
-    const EV_MIN = 0.05;    // 1ª Eliminação: Menor que 5%
-    const EV_TETO = 0.22;   // 2ª Eliminação: Maior que 22% (Anomalia)
-    const EV_IDEAL = 0.15;  // Alvo: Próximo de 15%
+    // 🎯 ESCOLHA FINAL
+    const EV_MIN = 0.04;
+    const EV_TETO = 0.18;
+    const EV_IDEAL = 0.12;
 
     let evList = [
         { nome: "Casa", ev: evC, odd: mercado.casa, stake: kC },
@@ -106,100 +147,130 @@ function executarAnalise() {
         { nome: "Under 2.5", ev: evU, odd: mercado.under, stake: kU }
     ];
 
-    // ETAPA 1: O funil de segurança
-    let candidatosSeguros = evList.filter(item => item.ev >= EV_MIN && item.ev <= EV_TETO);
+    let candidatos = evList.filter(i => i.ev >= EV_MIN && i.ev <= EV_TETO);
 
-    // ETAPA 2: A escolha técnica (Busca pelo Ideal)
     let melhor = { nome: "Sem valor", ev: 0, odd: 0, stake: 0 };
-    const maiorEVBruto = Math.max(evC, evE, evF, evB, evO, evU);
 
-    if (candidatosSeguros.length > 0) {
-        // Ordena para que o primeiro item seja o mais próximo de 0.15
-        candidatosSeguros.sort((a, b) => Math.abs(a.ev - EV_IDEAL) - Math.abs(b.ev - EV_IDEAL));
-        melhor = candidatosSeguros[0];
-    } else if (maiorEVBruto > EV_TETO) {
-        // Se nenhum passou no filtro, mas existe um EV gigante
-        melhor = { nome: "⚠️ Anomalia (Eliminado)", ev: maiorEVBruto, odd: 0, stake: 0 };
+    if (candidatos.length > 0) {
+        candidatos.sort((a, b) => Math.abs(a.ev - EV_IDEAL) - Math.abs(b.ev - EV_IDEAL));
+        melhor = candidatos[0];
     }
 
-    // Saída para o painel e salvamento
+    // 📤 OUTPUT
     exibirResultados(
         pC * 100, pE * 100, pF * 100,
         pB * 100, pO * 100, pU * 100,
-        evC, evE, evF, evB, evO, evU, // Passei TODOS os 6 EVs na ordem
-        kC, kE, kF, kB, kO, kU,       // Passei TODOS os 6 Kellys na ordem
+        evC, evE, evF, evB, evO, evU,
+        kC, kE, kF, kB, kO, kU,
         lambdaCasa + lambdaFora,
         melhor
     );
-
-
-    window.dadosTemp = {
-        time: document.getElementById('nomeJogo')?.value || "Jogo",
-        ev: Number(melhor.ev),
-        odd: Number(melhor.odd),
-        stake: Number(melhor.stake),
-        pC: pC * 100, pE: pE * 100, pF: pF * 100,
-        pB: pB * 100, pO: pO * 100, pU: pU * 100,
-        expGols: lambdaCasa + lambdaFora,
-        principal: melhor.nome,
-        lucro: 0,
-        resultado: "Pendente"
-    };
 }
 
 function exibirResultados(
     pC, pE, pF,
     pBTTS, pOver, pUnder,
-    evC, evE, evF, evB, evO, evU, // 6 EVs na ordem
-    kC, kE, kF, kB, kO, kU,       // 6 Stakes na ordem
+    evC, evE, evF, evB, evO, evU,
+    kC, kE, kF, kB, kO, kU,
     totalGols,
     melhor
 ) {
     const painel = document.getElementById('painelResultado');
     if (!painel) return;
 
-    const linha = (nome, prob) => `
+    const linha = (nome, prob, ev = null) => {
+        let cor = "#333";
+
+        // 🔧 CORREÇÃO: prob já vem em %
+        if (prob >= 60) cor = "#2e7d32";
+        else if (prob <= 40) cor = "#c62828";
+
+        return `
         <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
             <span>${nome}</span>
-            <b>${prob.toFixed(1)}%</b>
+            <span>
+                <b style="color:${cor}">${prob.toFixed(1)}%</b>
+                ${ev !== null ? `<small style="margin-left:6px;color:#666;">EV: ${ev.toFixed(2)}</small>` : ""}
+            </span>
         </div>
-    `;
+        `;
+    };
 
     let html = `
         <h3>📊 Probabilidades</h3>
-        ${linha("🏠 Casa", pC)}
-        ${linha("🤝 Empate", pE)}
-        ${linha("🚀 Fora", pF)}
+        ${linha("🏠 Casa", pC, evC)}
+        ${linha("🤝 Empate", pE, evE)}
+        ${linha("🚀 Fora", pF, evF)}
         <hr>
         <h3>📈 Mercados</h3>
-        ${linha("⚽ BTTS", pBTTS)}
-        ${linha("📈 Over 2.5", pOver)}
-        ${linha("📉 Under 2.5", pUnder)} 
+        ${linha("⚽ BTTS", pBTTS, evB)}
+        ${linha("📈 Over 2.5", pOver, evO)}
+        ${linha("📉 Under 2.5", pUnder, evU)}
         <hr>
         <p>🔢 Gols esperados: <b>${totalGols.toFixed(2)}</b></p>
     `;
 
-    // Lógica do Sweet Spot (Filtragem)
-    if (melhor.nome.includes("Anomalia")) {
+    // 🎯 RESULTADO FINAL (SEM QUEBRAR SUA LÓGICA)
+    if (melhor.nome && melhor.nome.includes("Anomalia")) {
         html += `
         <div style="margin-top:15px;padding:12px;background:#fff3e0;border-radius:8px;border-left:5px solid #ff9800;">
             <b>${melhor.nome}</b><br>
-            EV Bruto: <b>${melhor.ev.toFixed(2)}</b><br>
-            <small>Valor suspeito detectado pelo filtro de segurança.</small>
+            EV Bruto: <b>${(melhor.ev || 0).toFixed(2)}</b><br>
+            <small>Valor suspeito detectado.</small>
         </div>`;
-    } else if (melhor.ev >= 0.05) {
+    } // 🚫 BLOQUEIO INTELIGENTE DE UNDER
+    if (melhor.nome === "Under 2.5" && (pU < 0.58 || evU < 0.08)) {
+        melhor = { nome: "Sem valor", ev: 0, odd: 0, stake: 0 };
+    }
+    else if (!melhor.nome || melhor.nome === "Sem valor") {
+        html += `
+        <div style="margin-top:15px;padding:12px;background:#ffebee;border-radius:8px;border-left:5px solid #c62828;">
+            ⚠️ Nenhuma aposta com valor matemático
+        </div>`;
+    }
+    else {
         html += `
         <div style="margin-top:15px;padding:12px;background:#e8f5e9;border-radius:8px;border-left:5px solid #2e7d32;">
             <b>🎯 Melhor Aposta (Sweet Spot):</b> ${melhor.nome}<br>
-            EV Ideal: <b>${melhor.ev.toFixed(2)}</b> | Stake: <b>${melhor.stake.toFixed(1)}%</b>
+            EV: <b>${(melhor.ev || 0).toFixed(2)}</b> | Stake: <b>${(melhor.stake || 0).toFixed(1)}%</b>
         </div>`;
-    } else {
-        html += `<div style="margin-top:15px;padding:12px;background:#ffebee;border-radius:8px;border-left:5px solid #c62828;">⚠️ Sem valor matemático</div>`;
     }
 
-    html += `<button onclick="salvarResultado()" style="margin-top:15px;width:100%;padding:12px;background:#1a237e;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:bold;">💾 SALVAR NA TABELA</button>`;
+    html += `
+    <button onclick="salvarResultado()"
+        style="margin-top:15px;width:100%;padding:12px;background:#1a237e;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:bold;">
+        💾 SALVAR NA TABELA
+    </button>`;
 
     painel.innerHTML = html;
+
+    // 🚫 BLOQUEIA SALVAMENTO SE NÃO TEM VALOR
+    if (melhor.nome === "Sem valor") {
+        window.dadosTemp = null;
+        return;
+    }
+
+    // 💾 SALVAR DADOS TEMPORÁRIOS
+    window.dadosTemp = {
+        time: document.getElementById('nomeJogo')?.value || "Jogo",
+
+        ev: melhor.ev,
+        odd: melhor.odd,
+        stake: melhor.stake,
+
+        pC: pC,
+        pE: pE,
+        pF: pF,
+        pB: pBTTS,
+        pO: pOver,
+        pU: pUnder,
+
+        expGols: totalGols,
+
+        principal: melhor.nome,
+
+        lucro: 0
+    };
 }
 
 
@@ -237,7 +308,6 @@ function salvarResultado() {
 window.executarAnalise = executarAnalise;
 window.exibirResultados = exibirResultados;
 window.salvarResultado = salvarResultado;
-
 function renderizarTabela() {
 
     const hist = JSON.parse(localStorage.getItem('meuHistoricoApostas')) || [];
@@ -287,11 +357,18 @@ function renderizarTabela() {
 
     const saldoAtual = bancaBase + lucroTotal;
 
+    // 📊 ROI
+    const totalInvestido = hist.reduce((acc, j) => acc + (100 * (j.stake / 100)), 0);
+    const roi = totalInvestido > 0 ? (lucroTotal / totalInvestido) * 100 : 0;
+
     document.getElementById('lucroTotal').innerText =
         `Lucro: R$ ${lucroTotal.toFixed(2)}`;
 
     document.getElementById('saldoAtual').innerText =
         `Saldo Atual: R$ ${saldoAtual.toFixed(2)}`;
+
+    document.getElementById('roi').innerText =
+        `ROI: ${roi.toFixed(2)}%`;
 }
 
 function validarPlacar(index) {
