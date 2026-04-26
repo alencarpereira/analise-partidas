@@ -192,87 +192,121 @@
                 </div>
             </div>
         </div>
-
         <div class="card">
             <h3>⚙️ Ajustes do Modelo</h3>
 
             <div class="input-group">
                 <label>Média de gols da liga</label>
+                <!-- O campo continua sendo apenas para o número -->
                 <input type="number" id="mediaLiga" step="0.1" min="1" max="5" value="2.5" placeholder="Ex: 2.6">
             </div>
 
-            <small style="color:#666;">
-                Média de gols da competição. Exemplos:<br>
-                Brasileirão ≈ 2.50 | Premier League ≈ 2.7 | Bundesliga ≈ 3.1 | La Liga ≈ 2.50 | Serie A ≈ 2.6 | Ligue 1
-                ≈ 2.7 | MLS ≈ 2.99 | Liga Argentina ≈ 2.25 |
-                Campeonato Holandês ≈ 3.0 | Campeonato Português ≈ 2.65 | Campeonato Paraguaio ≈ 2.25 | Campeonato
-                Chileno ≈ 2.45 | Campeonato Colombiano ≈ 2.35 |
-                Campeonato Mexicano ≈ 2.7 | Campeonato Uruguaio = 2.30 | EFL Championship ≈ 2.5 | Espanha B
-                divisão ≈ 2.30 | Itália Serie B ≈ 2.3 | França Ligue B ≈ 2.4 |
-                Alemanha B.Bundesliga ≈ 2.8
-            </small>
+            <!-- Aba de seleção rápida -->
+            <div class="aba-ligas" style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 5px;">
+                <small style="width: 100%; color: #666;">Sugestões (clique para aplicar):</small>
+
+                <button type="button" onclick="setMedia(2.75)" class="btn-liga">🏴󠁧󠁢󠁥󠁮󠁧󠁿 Premier</button>
+                <button type="button" onclick="setMedia(2.5)" class="btn-liga">🏴󠁧󠁢󠁥󠁮󠁧󠁿 Championship</button>
+                <button type="button" onclick="setMedia(3.2)" class="btn-liga">🇩🇪 Bundesliga</button>
+                <button type="button" onclick="setMedia(2.5)" class="btn-liga">La Liga</button>
+                <button type="button" onclick="setMedia(2.5)" class="btn-liga">🇧🇷 Série A</button>
+                <button type="button" onclick="setMedia(2.2)" class="btn-liga">🇧🇷 Série B</button>
+                <button type="button" onclick="setMedia(2.2)" class="btn-liga">🇵🇾 Paraguai</button>
+                <button type="button" onclick="setMedia(2.2)" class="btn-liga">🇺🇾 Uruguai</button>
+                <button type="button" onclick="setMedia(2.2)" class="btn-liga">🇦🇷 Argentina</button>
+                <button type="button" onclick="setMedia(2.6)" class="btn-liga">🇨🇱 Chile</button>
+                <button type="button" onclick="setMedia(2.7)" class="btn-liga">🇫🇷 Ligue 1</button>
+                <button type="button" onclick="setMedia(3.1)" class="btn-liga">Eredivisie holandês</button>
+            </div>
         </div>
 
-        <button class="btn-analisar" onclick="executarAnalise()"
-            style="width:100%; padding:15px; background:#1a237e; color:white; border:none; border-radius:8px; font-size:1.1em; cursor:pointer;">
-            CALCULAR PROBABILIDADE & VALOR
+        <script>
+            // Função que "joga" o valor no input
+            function setMedia(valor) {
+                document.getElementById('mediaLiga').value = valor;
+            }
+        </script>
+
+        <style>
+            /* Estilo básico para os botões de seleção rápida */
+            .btn-liga {
+                background: #f0f0f0;
+                border: 1px solid #ccc;
+                padding: 4px 8px;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 12px;
+                transition: 0.2s;
+            }
+
+            .btn-liga:hover {
+                background: #e0e0e0;
+                border-color: #999;
+            }
+        </style>
+
+    </div>
+
+    <button class="btn-analisar" onclick="executarAnalise()"
+        style="width:100%; padding:15px; background:#1a237e; color:white; border:none; border-radius:8px; font-size:1.1em; cursor:pointer;">
+        CALCULAR PROBABILIDADE & VALOR
+    </button>
+    <br>
+    <br>
+
+    <div class="flex-row" style="margin-bottom: 15px;">
+        <button onclick="preencherExemplo()"
+            style="flex: 1; padding: 10px; background: #546e7a; color: white; border: none; border-radius: 8px; cursor: pointer;">
+            🧪 Preencher Exemplo
         </button>
-        <br>
-        <br>
+        <button onclick="limparCampos()"
+            style="flex: 1; padding: 10px; background: #d32f2f; color: white; border: none; border-radius: 8px; cursor: pointer;">
+            🧹 Limpar Tudo
+        </button>
+    </div>
 
-        <div class="flex-row" style="margin-bottom: 15px;">
-            <button onclick="preencherExemplo()"
-                style="flex: 1; padding: 10px; background: #546e7a; color: white; border: none; border-radius: 8px; cursor: pointer;">
-                🧪 Preencher Exemplo
-            </button>
-            <button onclick="limparCampos()"
-                style="flex: 1; padding: 10px; background: #d32f2f; color: white; border: none; border-radius: 8px; cursor: pointer;">
-                🧹 Limpar Tudo
-            </button>
+    <div id="resultado" style="margin-top:20px;">
+        <div id="painelResultado"
+            style="background:white; padding:15px; border-radius:8px; box-shadow:0 2px 10px rgba(0,0,0,0.1);">
         </div>
+    </div>
+    <!-- RELATÓRIO -->
+    <div class="card" style="overflow-x: auto; margin-top: 20px;">
+        <h3>📊 Relatório Geral de Apostas</h3>
+        <table style="width: 100%;">
+            <!-- Localize o seu <thead> e adicione a coluna U2.5 -->
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>EV</th>
+                    <th>Odd</th>
+                    <th>Stake</th>
+                    <th>1</th>
+                    <th>X</th>
+                    <th>2</th>
+                    <th>BTTS</th>
+                    <th>O2.5</th>
+                    <th>U2.5</th> <!-- ADICIONE ESTA LINHA -->
+                    <th>ExpG</th>
+                    <th>Aposta</th>
+                    <th>Placar</th>
+                    <th>Lucro</th>
+                    <th>Ação</th>
+                </tr>
+            </thead>
 
-        <div id="resultado" style="margin-top:20px;">
-            <div id="painelResultado"
-                style="background:white; padding:15px; border-radius:8px; box-shadow:0 2px 10px rgba(0,0,0,0.1);">
-            </div>
+            <tbody id="corpoTabela"></tbody>
+        </table>
+
+        <div style="margin-top: 15px;">
+            <button onclick="exportarCSV()"
+                style="background:#2e7d32; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer; font-weight:bold;">📥
+                Exportar CSV</button>
+            <button onclick="limparHistorico()"
+                style="color:#d32f2f; background:none; border:1px solid #d32f2f; padding:8px 15px; border-radius:5px; cursor:pointer; font-weight:bold; margin-left: 10px;">🧹
+                Limpar Histórico</button>
         </div>
-        <!-- RELATÓRIO -->
-        <div class="card" style="overflow-x: auto; margin-top: 20px;">
-            <h3>📊 Relatório Geral de Apostas</h3>
-            <table style="width: 100%;">
-                <!-- Localize o seu <thead> e adicione a coluna U2.5 -->
-                <thead>
-                    <tr>
-                        <th>Time</th>
-                        <th>EV</th>
-                        <th>Odd</th>
-                        <th>Stake</th>
-                        <th>1</th>
-                        <th>X</th>
-                        <th>2</th>
-                        <th>BTTS</th>
-                        <th>O2.5</th>
-                        <th>U2.5</th> <!-- ADICIONE ESTA LINHA -->
-                        <th>ExpG</th>
-                        <th>Aposta</th>
-                        <th>Placar</th>
-                        <th>Lucro</th>
-                        <th>Ação</th>
-                    </tr>
-                </thead>
-
-                <tbody id="corpoTabela"></tbody>
-            </table>
-
-            <div style="margin-top: 15px;">
-                <button onclick="exportarCSV()"
-                    style="background:#2e7d32; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer; font-weight:bold;">📥
-                    Exportar CSV</button>
-                <button onclick="limparHistorico()"
-                    style="color:#d32f2f; background:none; border:1px solid #d32f2f; padding:8px 15px; border-radius:5px; cursor:pointer; font-weight:bold; margin-left: 10px;">🧹
-                    Limpar Histórico</button>
-            </div>
-        </div>
+    </div>
     </div>
 
     <script src="script.js"></script>
