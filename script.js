@@ -17,7 +17,7 @@ function executarAnalise() {
     const defesaFora = getVal('defesaFora');
     const mediaLiga = getVal('mediaLiga') || 2.5;
 
-    // Cálculo de média ponderada (forma recente)
+    // 📊 Forma recente ponderada
     const media = id => {
         const el = document.getElementById(id);
         if (!el || !el.value) return 0;
@@ -29,20 +29,46 @@ function executarAnalise() {
     const formaCasa = media('golsMCasa');
     const formaFora = media('golsMFora');
 
-    const forcaAtaqueCasa = (ataqueCasa - mediaLiga) / mediaLiga;
-    const forcaAtaqueFora = (ataqueFora - mediaLiga) / mediaLiga;
-    const forcaDefesaCasa = (mediaLiga - defesaCasa) / mediaLiga;
-    const forcaDefesaFora = (mediaLiga - defesaFora) / mediaLiga;
-
-    const clamp = x => Math.max(0.3, 1 + x);
     const ajusteMotivacao = 1 + ((motivacao - 1) * 0.5);
 
-    let lambdaCasa = mediaLiga * clamp(forcaAtaqueCasa) * clamp(forcaDefesaFora) * 1.10 * ajusteMotivacao;
-    let lambdaFora = mediaLiga * clamp(forcaAtaqueFora) * clamp(forcaDefesaCasa) * ajusteMotivacao;
+    // ✅ NORMALIZAÇÃO CORRETA
+    const ataqueCasaAdj = ataqueCasa / mediaLiga;
+    const defesaCasaAdj = defesaCasa / mediaLiga;
+    const ataqueForaAdj = ataqueFora / mediaLiga;
+    const defesaForaAdj = defesaFora / mediaLiga;
 
-    if (formaCasa > 0) lambdaCasa = lambdaCasa * 0.7 + formaCasa * 0.3;
-    if (formaFora > 0) lambdaFora = lambdaFora * 0.7 + formaFora * 0.3;
+    // 🎯 LAMBDAS
+    // 🎯 LAMBDAS
+    let lambdaCasa = ataqueCasaAdj * defesaForaAdj * mediaLiga * 1.05 * ajusteMotivacao;
+    let lambdaFora = ataqueForaAdj * defesaCasaAdj * mediaLiga * ajusteMotivacao;
 
+    // 🔧 AJUSTE DE FORMA (MAIS SUAVE)
+    if (formaCasa > 0) {
+        lambdaCasa *= (1 + ((formaCasa - mediaLiga) / mediaLiga) * 0.15);
+    }
+    if (formaFora > 0) {
+        lambdaFora *= (1 + ((formaFora - mediaLiga) / mediaLiga) * 0.15);
+    }
+
+    // ⚖️ AJUSTE LEVE NO VISITANTE (REMOVE VIÉS DE UNDER)
+    lambdaFora *= 1.05;
+
+    // 🚧 LIMITADOR DE GOLS (CORRIGIDO)
+    let total = lambdaCasa + lambdaFora;
+
+    if (total > 3.2) {
+        const fator = 3.2 / total;
+        lambdaCasa *= fator;
+        lambdaFora *= fator;
+    }
+
+    if (total < 2.2) {
+        const fator = 2.2 / total;
+        lambdaCasa *= fator;
+        lambdaFora *= fator;
+    }
+
+    // 📐 POISSON
     const fatorial = n => {
         let r = 1;
         for (let i = 2; i <= n; i++) r *= i;
@@ -57,6 +83,7 @@ function executarAnalise() {
         for (let j = 0; j < 7; j++) {
             const p = poisson(lambdaCasa, i) * poisson(lambdaFora, j);
             soma += p;
+
             if (i > j) pC += p;
             else if (i < j) pF += p;
             else pE += p;
@@ -67,9 +94,10 @@ function executarAnalise() {
         }
     }
 
-    pC /= soma; pF /= soma; pE /= soma; pO /= soma; pB /= soma; pU /= soma;
+    pC /= soma; pF /= soma; pE /= soma;
+    pO /= soma; pU /= soma; pB /= soma;
 
-    // Cálculo de EV (Valor Esperado)
+    // 💰 EV
     let evC = (pC * mercado.casa) - 1;
     let evE = (pE * mercado.empate) - 1;
     let evF = (pF * mercado.fora) - 1;
@@ -77,7 +105,7 @@ function executarAnalise() {
     let evO = (pO * mercado.over) - 1;
     let evU = (pU * mercado.under) - 1;
 
-    // Critério de Kelly (0.25 fracionado)
+    // 📊 KELLY (0.25 fracionado)
     const kelly = (p, o) => {
         if (!o || o <= 1) return 0;
         const b = o - 1;
@@ -92,10 +120,10 @@ function executarAnalise() {
     const kO = kelly(pO, mercado.over);
     const kU = kelly(pU, mercado.under);
 
-    // --- 🎯 LÓGICA DE FILTRAGEM POR ELIMINAÇÃO ---
-    const EV_MIN = 0.05;    // 1ª Eliminação: Menor que 5%
-    const EV_TETO = 0.22;   // 2ª Eliminação: Maior que 22% (Anomalia)
-    const EV_IDEAL = 0.15;  // Alvo: Próximo de 15%
+    // 🎯 FILTRO EV (REFINADO)
+    const EV_MIN = 0.04;
+    const EV_TETO = 0.18;
+    const EV_IDEAL = 0.12;
 
     let evList = [
         { nome: "Casa", ev: evC, odd: mercado.casa, stake: kC },
@@ -106,32 +134,27 @@ function executarAnalise() {
         { nome: "Under 2.5", ev: evU, odd: mercado.under, stake: kU }
     ];
 
-    // ETAPA 1: O funil de segurança
     let candidatosSeguros = evList.filter(item => item.ev >= EV_MIN && item.ev <= EV_TETO);
 
-    // ETAPA 2: A escolha técnica (Busca pelo Ideal)
     let melhor = { nome: "Sem valor", ev: 0, odd: 0, stake: 0 };
     const maiorEVBruto = Math.max(evC, evE, evF, evB, evO, evU);
 
     if (candidatosSeguros.length > 0) {
-        // Ordena para que o primeiro item seja o mais próximo de 0.15
         candidatosSeguros.sort((a, b) => Math.abs(a.ev - EV_IDEAL) - Math.abs(b.ev - EV_IDEAL));
         melhor = candidatosSeguros[0];
     } else if (maiorEVBruto > EV_TETO) {
-        // Se nenhum passou no filtro, mas existe um EV gigante
         melhor = { nome: "⚠️ Anomalia (Eliminado)", ev: maiorEVBruto, odd: 0, stake: 0 };
     }
 
-    // Saída para o painel e salvamento
+    // 📤 OUTPUT
     exibirResultados(
         pC * 100, pE * 100, pF * 100,
         pB * 100, pO * 100, pU * 100,
-        evC, evE, evF, evB, evO, evU, // Passei TODOS os 6 EVs na ordem
-        kC, kE, kF, kB, kO, kU,       // Passei TODOS os 6 Kellys na ordem
+        evC, evE, evF, evB, evO, evU,
+        kC, kE, kF, kB, kO, kU,
         lambdaCasa + lambdaFora,
         melhor
     );
-
 
     window.dadosTemp = {
         time: document.getElementById('nomeJogo')?.value || "Jogo",
