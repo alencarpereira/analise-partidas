@@ -202,24 +202,27 @@
             </div>
 
             <!-- Aba de seleção rápida -->
-            <div class="aba-ligas" style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 5px;">
-                <small style="width: 100%; color: #666;">Sugestões (clique para aplicar):</small>
+            <div class="aba-ligas" style="margin-top: 15px; display: flex; flex-wrap: wrap; gap: 8px;">
+                <small style="width: 100%; color: #666; margin-bottom: 5px; font-weight: bold;">Sugestões de
+                    Ligas:</small>
 
-                <button type="button" onclick="setMedia(2.75)" class="btn-liga">🏴󠁧󠁢󠁥󠁮󠁧󠁿 Premier</button>
-                <button type="button" onclick="setMedia(2.5)" class="btn-liga">🏴󠁧󠁢󠁥󠁮󠁧󠁿 Championship</button>
-                <button type="button" onclick="setMedia(3.2)" class="btn-liga">🇩🇪 Bundesliga</button>
-                <button type="button" onclick="setMedia(2.5)" class="btn-liga">La Liga</button>
-                <button type="button" onclick="setMedia(2.5)" class="btn-liga">🇧🇷 Série A</button>
-                <button type="button" onclick="setMedia(2.2)" class="btn-liga">🇧🇷 Série B</button>
-                <button type="button" onclick="setMedia(2.2)" class="btn-liga">🇵🇾 Paraguai</button>
-                <button type="button" onclick="setMedia(2.2)" class="btn-liga">🇺🇾 Uruguai</button>
-                <button type="button" onclick="setMedia(2.2)" class="btn-liga">🇦🇷 Argentina</button>
-                <button type="button" onclick="setMedia(2.6)" class="btn-liga">🇨🇱 Chile</button>
-                <button type="button" onclick="setMedia(2.7)" class="btn-liga">🇫🇷 Ligue 1</button>
-                <button type="button" onclick="setMedia(3.1)" class="btn-liga">Eredivisie holandês</button>
+                <!-- Europa -->
+                <button type="button" onclick="setMedia(3.28)" class="btn-liga">🏴󠁧󠁢󠁥󠁮󠁧󠁿 Premier League</button>
+                <button type="button" onclick="setMedia(2.70)" class="btn-liga">🏴󠁧󠁢󠁥󠁮󠁧󠁿 Championship</button>
+                <button type="button" onclick="setMedia(3.22)" class="btn-liga">🇩🇪 Bundesliga</button>
+                <button type="button" onclick="setMedia(2.64)" class="btn-liga">🇪🇸 La Liga</button>
+                <button type="button" onclick="setMedia(2.70)" class="btn-liga">🇫🇷 Ligue 1</button>
+                <button type="button" onclick="setMedia(3.24)" class="btn-liga">🇳🇱 Eredivisie</button>
+
+                <!-- América Latina -->
+                <button type="button" onclick="setMedia(2.44)" class="btn-liga">🇧🇷 Série A</button>
+                <button type="button" onclick="setMedia(2.22)" class="btn-liga">🇧🇷 Série B</button>
+                <button type="button" onclick="setMedia(2.17)" class="btn-liga">🇵🇾 Paraguai</button>
+                <button type="button" onclick="setMedia(2.33)" class="btn-liga">🇺🇾 Uruguai</button>
+                <button type="button" onclick="setMedia(1.95)" class="btn-liga">🇦🇷 Argentina</button>
+                <button type="button" onclick="setMedia(2.65)" class="btn-liga">🇨🇱 Chile</button>
             </div>
         </div>
-
         <script>
             // Função que "joga" o valor no input
             function setMedia(valor) {
