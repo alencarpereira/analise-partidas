@@ -27,18 +27,18 @@ function executarAnalise() {
         if (!el || !el.value) return 0;
         const v = el.value.split(',').map(Number);
         if (v.length < 5) return 0;
-        return (v[0] + v[1] + v[2] + v[3] * 1.5 + v[4] * 1.5) / 6;
+        return (v[0] + v[1] + v[2] + v[3] * 1.3 + v[4] * 1.3) / 5.6; // Reduzi o peso dos últimos jogos de 1.5 para 1.3
     };
 
     const formaCasa = media('golsMCasa');
     const formaFora = media('golsMFora');
 
-    // 🔒 SUAVIZAÇÃO (ANTI-EXTREMO)
+    // 🔒 SUAVIZAÇÃO MAIS RÍGIDA (Peso menor para o desempenho individual)
     const suavizar = (valor, mediaLiga) => {
-        const pesoForma = 0.4;
-        const pesoLiga = 0.6;
+        const pesoForma = 0.25; // Era 0.40 (Diminuído)
+        const pesoLiga = 0.75;  // Era 0.60 (Aumentado)
         let ajustado = (valor * pesoForma) + (mediaLiga * pesoLiga);
-        return Math.max(ajustado, 0.3);
+        return Math.max(ajustado, 0.5); // Piso subiu de 0.3 para 0.5 para evitar Under extremo
     };
 
     const ataqueCasaSafe = suavizar(ataqueCasa, mediaLiga);
@@ -46,95 +46,73 @@ function executarAnalise() {
     const ataqueForaSafe = suavizar(ataqueFora, mediaLiga);
     const defesaForaSafe = suavizar(defesaFora, mediaLiga);
 
-    // ✅ NORMALIZAÇÃO SEGURA
+    // ✅ NORMALIZAÇÃO
     const ataqueCasaAdj = ataqueCasaSafe / mediaLiga;
     const defesaCasaAdj = defesaCasaSafe / mediaLiga;
     const ataqueForaAdj = ataqueForaSafe / mediaLiga;
     const defesaForaAdj = defesaForaSafe / mediaLiga;
 
-    // 🎯 LAMBDAS
-    let lambdaCasa = ataqueCasaAdj * (defesaForaAdj * 0.90) * mediaLiga * 1.05;
-    let lambdaFora = ataqueForaAdj * (defesaCasaAdj * 0.90) * mediaLiga;
+    // 🎯 LAMBDAS (Removido boosts excessivos)
+    let lambdaCasa = ataqueCasaAdj * (defesaForaAdj * 0.95) * mediaLiga; // Era 0.90 e tinha boost 1.05
+    let lambdaFora = ataqueForaAdj * (defesaCasaAdj * 0.95) * mediaLiga; // Era 0.90
 
     lambdaCasa *= motivacao;
     lambdaFora *= motivacao;
 
+    // Peso da forma na Lambda reduzido de 0.15 para 0.08
     if (formaCasa > 0) {
-        lambdaCasa *= (1 + ((formaCasa - mediaLiga) / mediaLiga) * 0.15);
+        lambdaCasa *= (1 + ((formaCasa - mediaLiga) / mediaLiga) * 0.08);
     }
     if (formaFora > 0) {
-        lambdaFora *= (1 + ((formaFora - mediaLiga) / mediaLiga) * 0.15);
+        lambdaFora *= (1 + ((formaFora - mediaLiga) / mediaLiga) * 0.08);
     }
 
-    lambdaFora *= 1.05;
+    // 🚀 BOOST ANTI-UNDER REDUZIDO (De 1.03 para 1.01)
+    lambdaCasa *= 1.01;
+    lambdaFora *= 1.01;
 
-    // 🚀 BOOST ANTI-UNDER
-    lambdaCasa *= 1.03;
-    lambdaFora *= 1.03;
-
-    // 🚧 LIMITADOR DE GOLS
+    // 🚧 LIMITADOR DE GOLS (Mais estreito)
     let total = lambdaCasa + lambdaFora;
-
-    let minGols = motivacao > 1 ? 2.5 : (motivacao < 1 ? 2.0 : 2.4);
-    let maxGols = motivacao > 1 ? 3.5 : (motivacao < 1 ? 3.0 : 3.2);
+    let minGols = 2.1;
+    let maxGols = 3.0;
 
     if (total > maxGols) {
         const f = maxGols / total;
         lambdaCasa *= f;
         lambdaFora *= f;
     }
-
     if (total < minGols) {
         const f = minGols / total;
         lambdaCasa *= f;
         lambdaFora *= f;
     }
 
-    // 📐 POISSON
-    const fatorial = n => {
-        let r = 1;
-        for (let i = 2; i <= n; i++) r *= i;
-        return r;
-    };
-
+    // 📐 POISSON (Mantido)
+    const fatorial = n => { let r = 1; for (let i = 2; i <= n; i++) r *= i; return r; };
     const poisson = (l, k) => (Math.exp(-l) * Math.pow(l, k)) / fatorial(k);
 
     let pC = 0, pF = 0, pE = 0, pO = 0, pB = 0, pU = 0, soma = 0;
-
     for (let i = 0; i < 8; i++) {
         for (let j = 0; j < 8; j++) {
             const p = poisson(lambdaCasa, i) * poisson(lambdaFora, j);
             soma += p;
-
             if (i > j) pC += p;
             else if (i < j) pF += p;
             else pE += p;
-
             if (i + j >= 3) pO += p;
             if (i + j <= 2) pU += p;
             if (i > 0 && j > 0) pB += p;
         }
     }
 
-    // ✅ NORMALIZAÇÃO FINAL
     pC /= soma; pF /= soma; pE /= soma;
     pO /= soma; pU /= soma; pB /= soma;
 
-    // 🚧 LIMITADOR DE EXTREMOS
-    pC = Math.min(pC, 0.80);
-    pF = Math.max(pF, 0.05);
-
-    // 🔄 REAJUSTE 1X2
+    // 🔄 REAJUSTE FINAL
     let soma1x2 = pC + pE + pF;
-    pC /= soma1x2;
-    pE /= soma1x2;
-    pF /= soma1x2;
+    pC /= soma1x2; pE /= soma1x2; pF /= soma1x2;
 
-    // 🔥 AJUSTE FINAL ANTI-UNDER
-    pU *= 0.97;
-    pO *= 1.03;
-
-    // 💰 EV
+    // 💰 EV e KELLY (Mantidos)
     let evC = (pC * mercado.casa) - 1;
     let evE = (pE * mercado.empate) - 1;
     let evF = (pF * mercado.fora) - 1;
@@ -142,7 +120,6 @@ function executarAnalise() {
     let evO = (pO * mercado.over) - 1;
     let evU = (pU * mercado.under) - 1;
 
-    // 📊 KELLY
     const kelly = (p, o) => {
         if (!o || o <= 1) return 0;
         const b = o - 1;
@@ -150,56 +127,33 @@ function executarAnalise() {
         return k > 0 ? Math.min(k * 0.25 * 100, 5) : 0;
     };
 
-    const kC = kelly(pC, mercado.casa);
-    const kE = kelly(pE, mercado.empate);
-    const kF = kelly(pF, mercado.fora);
-    const kB = kelly(pB, mercado.btts);
-    const kO = kelly(pO, mercado.over);
-    const kU = kelly(pU, mercado.under);
-
-    // 🎯 ESCOLHA FINAL
-    const EV_MIN = 0.04;
-    const EV_TETO = 0.18;
-    const EV_IDEAL = 0.12;
-
     let evList = [
-        { nome: "Casa", ev: evC, prob: pC, odd: mercado.casa, stake: kC },
-        { nome: "Empate", ev: evE, prob: pE, odd: mercado.empate, stake: kE },
-        { nome: "Fora", ev: evF, prob: pF, odd: mercado.fora, stake: kF },
-        { nome: "BTTS", ev: evB, prob: pB, odd: mercado.btts, stake: kB },
-        { nome: "Over 2.5", ev: evO, prob: pO, odd: mercado.over, stake: kO },
-        { nome: "Under 2.5", ev: evU, prob: pU, odd: mercado.under, stake: kU }
+        { nome: "Casa", ev: evC, prob: pC, odd: mercado.casa, stake: kelly(pC, mercado.casa) },
+        { nome: "Empate", ev: evE, prob: pE, odd: mercado.empate, stake: kelly(pE, mercado.empate) },
+        { nome: "Fora", ev: evF, prob: pF, odd: mercado.fora, stake: kelly(pF, mercado.fora) },
+        { nome: "BTTS", ev: evB, prob: pB, odd: mercado.btts, stake: kelly(pB, mercado.btts) },
+        { nome: "Over 2.5", ev: evO, prob: pO, odd: mercado.over, stake: kelly(pO, mercado.over) },
+        { nome: "Under 2.5", ev: evU, prob: pU, odd: mercado.under, stake: kelly(pU, mercado.under) }
     ];
 
-    // 🔥 FILTRO MAIS INTELIGENTE (EV + CONSISTÊNCIA)
-    let candidatos = evList.filter(i =>
-        i.ev >= EV_MIN &&
-        i.ev <= EV_TETO &&
-        i.prob >= 0.40
-    );
-
-    // 🧠 SCORE HÍBRIDO (EV + CONSISTÊNCIA)
-    candidatos.forEach(i => {
-        i.score = (i.ev * 0.6) + (i.prob * 0.4);
+    let candidatos = evList.filter(i => {
+        let evMinimo = (i.nome === "Casa" || i.nome === "Fora") ? 0.05 : 0.08;
+        return i.ev >= evMinimo && (i.prob >= 0.40 || ((i.nome === "Casa" || i.nome === "Fora") && i.prob >= 0.35));
     });
 
-    // 🏆 ESCOLHA FINAL MAIS INTELIGENTE
     let melhor = { nome: "Sem valor", ev: 0, odd: 0, stake: 0 };
+    let prioridade1x2 = candidatos.find(i => (i.nome === "Casa" || i.nome === "Fora") && i.prob >= 0.50);
 
-    if (candidatos.length > 0) {
-        candidatos.sort((a, b) => b.score - a.score);
+    if (prioridade1x2) {
+        melhor = prioridade1x2;
+    } else if (candidatos.length > 0) {
+        candidatos.sort((a, b) => b.ev - a.ev); // Prioriza o puro EV agora que as Lambdas são estáveis
         melhor = candidatos[0];
     }
-    // 📤 OUTPUT
-    exibirResultados(
-        pC * 100, pE * 100, pF * 100,
-        pB * 100, pO * 100, pU * 100,
-        evC, evE, evF, evB, evO, evU,
-        kC, kE, kF, kB, kO, kU,
-        lambdaCasa + lambdaFora,
-        melhor
-    );
+
+    exibirResultados(pC * 100, pE * 100, pF * 100, pB * 100, pO * 100, pU * 100, evC, evE, evF, evB, evO, evU, kelly(pC, mercado.casa), kelly(pE, mercado.empate), kelly(pF, mercado.fora), kelly(pB, mercado.btts), kelly(pO, mercado.over), kelly(pU, mercado.under), lambdaCasa + lambdaFora, melhor);
 }
+
 
 function exibirResultados(
     pC, pE, pF,
