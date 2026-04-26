@@ -219,7 +219,7 @@ function exibirResultados(
             <small>Valor suspeito detectado.</small>
         </div>`;
     } // 🚫 BLOQUEIO INTELIGENTE DE UNDER
-    if (melhor.nome === "Under 2.5" && (pU < 0.58 || evU < 0.08)) {
+    if (melhor.nome === "Under 2.5" && (pUnder < 58 || evU < 0.08)) {
         melhor = { nome: "Sem valor", ev: 0, odd: 0, stake: 0 };
     }
     else if (!melhor.nome || melhor.nome === "Sem valor") {
