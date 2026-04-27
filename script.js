@@ -139,19 +139,29 @@ function executarAnalise() {
     ];
 
     let candidatos = evList.filter(i => {
+        // Mantém suas travas de EV mínimo
         let evMinimo = (i.nome === "Casa" || i.nome === "Fora") ? 0.05 : 0.08;
+        // Mantém suas travas de probabilidade mínima para segurança
         return i.ev >= evMinimo && (i.prob >= 0.40 || ((i.nome === "Casa" || i.nome === "Fora") && i.prob >= 0.35));
     });
 
     let melhor = { nome: "Sem valor", ev: 0, odd: 0, stake: 0 };
-    let prioridade1x2 = candidatos.find(i => (i.nome === "Casa" || i.nome === "Fora") && i.prob >= 0.41);
+
+    // 🎯 ESTRATÉGIA: Prioriza 1x2 se estiver entre 45% e 60% (Odds de valor)
+    let prioridade1x2 = candidatos.find(i =>
+        (i.nome === "Casa" || i.nome === "Fora") &&
+        i.prob >= 0.45 &&
+        i.prob <= 0.60
+    );
 
     if (prioridade1x2) {
         melhor = prioridade1x2;
     } else if (candidatos.length > 0) {
-        candidatos.sort((a, b) => b.ev - a.ev); // Prioriza o puro EV agora que as Lambdas são estáveis
+        // Se não achar 1x2 na faixa ideal, escolhe o que tiver o maior EV (Gols ou BTTS)
+        candidatos.sort((a, b) => b.ev - a.ev);
         melhor = candidatos[0];
     }
+
 
     exibirResultados(pC * 100, pE * 100, pF * 100, pB * 100, pO * 100, pU * 100, evC, evE, evF, evB, evO, evU, kelly(pC, mercado.casa), kelly(pE, mercado.empate), kelly(pF, mercado.fora), kelly(pB, mercado.btts), kelly(pO, mercado.over), kelly(pU, mercado.under), lambdaCasa + lambdaFora, melhor);
 }
