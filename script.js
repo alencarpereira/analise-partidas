@@ -258,19 +258,17 @@ function renderizarTabela() {
     if (!corpo) return;
 
     let lucroTotal = 0;
-    const bancaBase = 100; // Valor fixo para cálculo de saldo inicial
+    const bancaBase = 100;
 
     corpo.innerHTML = hist.map((j, i) => {
         const lucro = Number(j.lucro) || 0;
         lucroTotal += lucro;
 
-        // Define a cor do lucro para visualização rápida
         const corLucro = lucro > 0 ? "green" : (lucro < 0 ? "red" : "black");
 
         return `
         <tr>
-            <td style="font-size: 11px; color: #666;">${j.data || '-'}</td>
-            <td style="font-weight: bold;">${j.time}</td>
+            <td>${j.time}</td>
             <td>${Number(j.ev).toFixed(2)}</td>
             <td>${Number(j.odd).toFixed(2)}</td>
             <td>${Number(j.stake).toFixed(1)}%</td>
@@ -281,21 +279,16 @@ function renderizarTabela() {
             <td>${Number(j.pO).toFixed(1)}%</td>
             <td>${Number(j.pU || 0).toFixed(1)}%</td>
             <td>${Number(j.expGols).toFixed(2)}</td>
-            
-            <td style="background: #f0f7ff; color: #1a237e;">
-                <b>${j.principal}</b>
-            </td>
+            <td><b>${j.principal}</b></td>
 
             <td>
                 ${j.golsC !== undefined
-                ? `<span style="font-weight:bold;">${j.golsC} x ${j.golsF}</span>`
+                ? `${j.golsC} x ${j.golsF}`
                 : `
-                    <div style="display:flex; align-items:center; gap:3px;">
-                        <input id="resC-${i}" type="number" style="width:35px; padding:2px;">
-                        x
-                        <input id="resF-${i}" type="number" style="width:35px; padding:2px;">
-                        <button onclick="validarPlacar(${i})" style="cursor:pointer; background:#4caf50; color:white; border:none; border-radius:3px; padding:2px 5px;">✔</button>
-                    </div>
+                    <input id="resC-${i}" type="number" style="width:40px;">
+                    x
+                    <input id="resF-${i}" type="number" style="width:40px;">
+                    <button onclick="validarPlacar(${i})">✔</button>
                 `}
             </td>
 
@@ -304,35 +297,20 @@ function renderizarTabela() {
             </td>
 
             <td>
-                <button onclick="excluir(${i})" style="cursor:pointer; background:none; border:none; font-size:16px;">🗑️</button>
+                <button onclick="excluir(${i})">🗑️</button>
             </td>
         </tr>`;
     }).join('');
 
-    // --- CÁLCULOS DE PERFORMANCE ---
     const saldoAtual = bancaBase + lucroTotal;
-
-    // Total investido é a soma das stakes (em R$) baseadas na banca de 100
     const totalInvestido = hist.reduce((acc, j) => acc + (bancaBase * (Number(j.stake) / 100)), 0);
-
-    // ROI = (Lucro Líquido / Valor Investido) * 100
     const roi = totalInvestido > 0 ? (lucroTotal / totalInvestido) * 100 : 0;
 
-    // Atualiza os elementos de resumo na interface
-    if (document.getElementById('lucroTotal')) {
-        document.getElementById('lucroTotal').innerText = `Lucro Acumulado: R$ ${lucroTotal.toFixed(2)}`;
-        document.getElementById('lucroTotal').style.color = lucroTotal >= 0 ? "green" : "red";
-    }
-
-    if (document.getElementById('saldoAtual')) {
-        document.getElementById('saldoAtual').innerText = `Saldo Atual: R$ ${saldoAtual.toFixed(2)}`;
-    }
-
-    if (document.getElementById('roi')) {
-        document.getElementById('roi').innerText = `ROI: ${roi.toFixed(2)}%`;
-        document.getElementById('roi').style.color = roi >= 0 ? "green" : "red";
-    }
+    if (document.getElementById('lucroTotal')) document.getElementById('lucroTotal').innerText = `Lucro: R$ ${lucroTotal.toFixed(2)}`;
+    if (document.getElementById('saldoAtual')) document.getElementById('saldoAtual').innerText = `Saldo Atual: R$ ${saldoAtual.toFixed(2)}`;
+    if (document.getElementById('roi')) document.getElementById('roi').innerText = `ROI: ${roi.toFixed(2)}%`;
 }
+
 
 
 function validarPlacar(index) {
