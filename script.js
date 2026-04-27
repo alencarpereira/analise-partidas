@@ -1,9 +1,9 @@
 function executarAnalise() {
-
     const getVal = id => parseFloat(document.getElementById(id)?.value) || 0;
 
-    // 🎯 MOTIVAÇÃO
+    // 🎯 CONFIGURAÇÕES DE ENTRADA
     const motivacaoEl = document.getElementById('motivacao');
+    // Melhor captura para garantir que lê o valor atualizado do HTML
     let motivacao = parseFloat(motivacaoEl?.value) || 1;
 
     const mercado = {
@@ -21,26 +21,23 @@ function executarAnalise() {
     const defesaFora = getVal('defesaFora');
     const mediaLiga = getVal('mediaLiga') || 2.5;
 
-    // 📊 FORMA
+    // 📊 CÁLCULO DE FORMA
     const media = id => {
         const el = document.getElementById(id);
         if (!el || !el.value) return 0;
         const v = el.value.split(',').map(Number);
         if (v.length < 5) return 0;
-        return (v[0] + v[1] + v[2] + v[3] * 1.3 + v[4] * 1.3) / 5.6; // Reduzi o peso dos últimos jogos de 1.5 para 1.3
+        return (v[0] + v[1] + v[2] + v[3] * 1.3 + v[4] * 1.3) / 5.6;
     };
 
     const formaCasa = media('golsMCasa');
     const formaFora = media('golsMFora');
 
-    // 🔒 SUAVIZAÇÃO DINÂMICA
-    // Agora o peso se ajusta: ligas com mais gols permitem que o ataque individual apareça mais
+    // 🔒 SUAVIZAÇÃO
     const suavizar = (valor, mediaLiga) => {
         const pesoForma = 0.30;
         const pesoLiga = 0.70;
-        let ajustado = (valor * pesoForma) + (mediaLiga * pesoLiga);
-        // O piso agora é 25% da média da liga, evitando Under extremo em ligas over
-        return Math.max(ajustado, mediaLiga * 0.25);
+        return Math.max((valor * pesoForma) + (mediaLiga * pesoLiga), mediaLiga * 0.25);
     };
 
     const ataqueCasaSafe = suavizar(ataqueCasa, mediaLiga);
@@ -48,48 +45,37 @@ function executarAnalise() {
     const ataqueForaSafe = suavizar(ataqueFora, mediaLiga);
     const defesaForaSafe = suavizar(defesaFora, mediaLiga);
 
-    // ✅ NORMALIZAÇÃO
-    const ataqueCasaAdj = ataqueCasaSafe / mediaLiga;
-    const defesaCasaAdj = defesaCasaSafe / mediaLiga;
-    const ataqueForaAdj = ataqueForaSafe / mediaLiga;
-    const defesaForaAdj = defesaForaSafe / mediaLiga;
+    // 🎯 CÁLCULO DAS LAMBDAS BASE
+    let lambdaCasa = (ataqueCasaSafe / mediaLiga) * ((defesaForaSafe / mediaLiga) * 0.95) * mediaLiga;
+    let lambdaFora = (ataqueForaSafe / mediaLiga) * ((defesaCasaSafe / mediaLiga) * 0.95) * mediaLiga;
 
-    // 🎯 LAMBDAS (Removido boosts excessivos)
-    let lambdaCasa = ataqueCasaAdj * (defesaForaAdj * 0.95) * mediaLiga; // Era 0.90 e tinha boost 1.05
-    let lambdaFora = ataqueForaAdj * (defesaCasaAdj * 0.95) * mediaLiga; // Era 0.90
+    // Peso da forma
+    if (formaCasa > 0) lambdaCasa *= (1 + ((formaCasa - mediaLiga) / mediaLiga) * 0.08);
+    if (formaFora > 0) lambdaFora *= (1 + ((formaFora - mediaLiga) / mediaLiga) * 0.08);
 
+    // 🚧 LIMITADOR DINÂMICO (Vem antes da motivação para não anular o boost)
+    let totalPre = lambdaCasa + lambdaFora;
+    let minGols = mediaLiga * 0.85;
+    let maxGols = mediaLiga * 1.25;
+
+    if (totalPre > maxGols) {
+        const f = maxGols / totalPre;
+        lambdaCasa *= f; lambdaFora *= f;
+    }
+    if (totalPre < minGols) {
+        const f = minGols / totalPre;
+        lambdaCasa *= f; lambdaFora *= f;
+    }
+
+    // 🚀 APLICAÇÃO DA MOTIVAÇÃO (Agora ela realmente altera o placar final)
     lambdaCasa *= motivacao;
     lambdaFora *= motivacao;
 
-    // Peso da forma na Lambda reduzido de 0.15 para 0.08
-    if (formaCasa > 0) {
-        lambdaCasa *= (1 + ((formaCasa - mediaLiga) / mediaLiga) * 0.08);
-    }
-    if (formaFora > 0) {
-        lambdaFora *= (1 + ((formaFora - mediaLiga) / mediaLiga) * 0.08);
-    }
-
-    // 🚀 BOOST ANTI-UNDER REDUZIDO (De 1.03 para 1.01)
+    // Pequeno boost padrão
     lambdaCasa *= 1.01;
     lambdaFora *= 1.01;
 
-    // 🚧 LIMITADOR DE GOLS DINÂMICO (A grande mudança)
-    // Em vez de 2.1 e 3.0 fixos, usamos margens baseadas na própria liga escolhida
-    let total = lambdaCasa + lambdaFora;
-    let minGols = mediaLiga * 0.85; // Permite até 15% abaixo da média
-    let maxGols = mediaLiga * 1.25; // Permite até 25% acima da média
-
-    if (total > maxGols) {
-        const f = maxGols / total;
-        lambdaCasa *= f;
-        lambdaFora *= f;
-    }
-    if (total < minGols) {
-        const f = minGols / total;
-        lambdaCasa *= f;
-        lambdaFora *= f;
-    }
-    // 📐 POISSON (Mantido)
+    // 📐 POISSON
     const fatorial = n => { let r = 1; for (let i = 2; i <= n; i++) r *= i; return r; };
     const poisson = (l, k) => (Math.exp(-l) * Math.pow(l, k)) / fatorial(k);
 
@@ -107,14 +93,13 @@ function executarAnalise() {
         }
     }
 
+    // Normalização
     pC /= soma; pF /= soma; pE /= soma;
     pO /= soma; pU /= soma; pB /= soma;
-
-    // 🔄 REAJUSTE FINAL
     let soma1x2 = pC + pE + pF;
     pC /= soma1x2; pE /= soma1x2; pF /= soma1x2;
 
-    // 💰 EV e KELLY (Mantidos)
+    // 💰 EV e KELLY
     let evC = (pC * mercado.casa) - 1;
     let evE = (pE * mercado.empate) - 1;
     let evF = (pF * mercado.fora) - 1;
@@ -138,57 +123,36 @@ function executarAnalise() {
         { nome: "Under 2.5", ev: evU, prob: pU, odd: mercado.under, stake: kelly(pU, mercado.under) }
     ];
 
-    let candidatos = evList.filter(i => {
-        // Mantém suas travas de EV mínimo
-        let evMinimo = (i.nome === "Casa" || i.nome === "Fora") ? 0.05 : 0.08;
-        // Mantém suas travas de probabilidade mínima para segurança
-        return i.ev >= evMinimo && (i.prob >= 0.40 || ((i.nome === "Casa" || i.nome === "Fora") && i.prob >= 0.35));
-    });
+    let melhor = { nome: "Sem valor", ev: 0, odd: 0, stake: 0, prob: 0 };
 
-    let melhor = { nome: "Sem valor", ev: 0, odd: 0, stake: 0 };
+    // 🎯 HIERARQUIA
+    let pri1x2 = evList.find(i => (i.nome === "Casa" || i.nome === "Fora") && i.prob >= 0.43 && i.prob <= 0.60 && i.ev > 0 && i.ev <= 0.70);
+    let priOver = evList.find(i => i.nome === "Over 2.5" && i.prob >= 0.65 && i.ev > 0.05);
+    let priBTTS = evList.find(i => i.nome === "BTTS" && i.prob >= 0.60 && i.ev > 0.05);
 
-    // 🎯 ESTRATÉGIA: Prioriza 1x2 se estiver entre 45% e 60% (Odds de valor)
-    let prioridade1x2 = candidatos.find(i =>
-        (i.nome === "Casa" || i.nome === "Fora") &&
-        i.prob >= 0.45 &&
-        i.prob <= 0.60
-    );
-
-    if (prioridade1x2) {
-        melhor = prioridade1x2;
-    } else if (candidatos.length > 0) {
-        // Se não achar 1x2 na faixa ideal, escolhe o que tiver o maior EV (Gols ou BTTS)
-        candidatos.sort((a, b) => b.ev - a.ev);
-        melhor = candidatos[0];
+    if (pri1x2) melhor = pri1x2;
+    else if (priOver) melhor = priOver;
+    else if (priBTTS) melhor = priBTTS;
+    else {
+        let candidatos = evList.filter(i => {
+            let evM = (i.nome === "Casa" || i.nome === "Fora") ? 0.05 : 0.08;
+            return i.ev >= evM && i.prob >= 0.35 && i.ev <= 1.20;
+        });
+        if (candidatos.length > 0) {
+            candidatos.sort((a, b) => b.ev - a.ev);
+            melhor = candidatos[0];
+        }
     }
-
 
     exibirResultados(pC * 100, pE * 100, pF * 100, pB * 100, pO * 100, pU * 100, evC, evE, evF, evB, evO, evU, kelly(pC, mercado.casa), kelly(pE, mercado.empate), kelly(pF, mercado.fora), kelly(pB, mercado.btts), kelly(pO, mercado.over), kelly(pU, mercado.under), lambdaCasa + lambdaFora, melhor);
 }
 
-
-function exibirResultados(
-    pC, pE, pF,
-    pBTTS, pOver, pUnder,
-    evC, evE, evF, evB, evO, evU,
-    kC, kE, kF, kB, kO, kU,
-    totalGols,
-    melhor
-) {
+function exibirResultados(pC, pE, pF, pBTTS, pOver, pUnder, evC, evE, evF, evB, evO, evU, kC, kE, kF, kB, kO, kU, totalGols, melhor) {
     const painel = document.getElementById('painelResultado');
     if (!painel) return;
 
-    // --- FILTRO DE SEGURANÇA ADICIONAL ---
-    // Aplica o bloqueio de Under antes de começar a gerar o HTML
-    if (melhor.nome === "Under 2.5" && (pUnder < 58 || evU < 0.08)) {
-        melhor = { nome: "Sem valor", ev: 0, odd: 0, stake: 0 };
-    }
-
     const linha = (nome, prob, ev = null) => {
-        let cor = "#333";
-        if (prob >= 60) cor = "#2e7d32";
-        else if (prob <= 40) cor = "#c62828";
-
+        let cor = prob >= 60 ? "#2e7d32" : (prob <= 40 ? "#c62828" : "#333");
         return `
         <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
             <span>${nome}</span>
@@ -196,77 +160,47 @@ function exibirResultados(
                 <b style="color:${cor}">${prob.toFixed(1)}%</b>
                 ${ev !== null ? `<small style="margin-left:6px;color:#666;">EV: ${ev.toFixed(2)}</small>` : ""}
             </span>
-        </div>
-        `;
+        </div>`;
     };
 
-    let html = `
-        <h3>📊 Probabilidades</h3>
-        ${linha("🏠 Casa", pC, evC)}
-        ${linha("🤝 Empate", pE, evE)}
-        ${linha("🚀 Fora", pF, evF)}
-        <hr>
-        <h3>📈 Mercados</h3>
-        ${linha("⚽ BTTS", pBTTS, evB)}
-        ${linha("📈 Over 2.5", pOver, evO)}
-        ${linha("📉 Under 2.5", pUnder, evU)}
-        <hr>
-        <p>🔢 Gols esperados: <b>${totalGols.toFixed(2)}</b></p>
-    `;
-
-    // --- ÁREA DE RESULTADO FINAL ---
-    let cartaoResultado = "";
+    let html = `<h3>📊 Probabilidades</h3>${linha("🏠 Casa", pC, evC)}${linha("🤝 Empate", pE, evE)}${linha("🚀 Fora", pF, evF)}<hr>
+                <h3>📈 Mercados</h3>${linha("⚽ BTTS", pBTTS, evB)}${linha("📈 Over 2.5", pOver, evO)}${linha("📉 Under 2.5", pUnder, evU)}<hr>
+                <p>🔢 Gols esperados: <b>${totalGols.toFixed(2)}</b></p>`;
 
     if (!melhor.nome || melhor.nome === "Sem valor") {
-        cartaoResultado = `
-        <div style="margin-top:15px;padding:12px;background:#ffebee;border-radius:8px;border-left:5px solid #c62828;">
-            ⚠️ Nenhuma aposta com valor matemático
-        </div>`;
-        window.dadosTemp = null; // Bloqueia salvamento
-    }
-    else if (melhor.nome.includes("Anomalia")) {
-        cartaoResultado = `
-        <div style="margin-top:15px;padding:12px;background:#fff3e0;border-radius:8px;border-left:5px solid #ff9800;">
-            <b>⚠️ ${melhor.nome}</b><br>
-            EV Bruto: <b>${(melhor.ev || 0).toFixed(2)}</b><br>
-            <small>Valor suspeito detectado.</small>
-        </div>`;
-    }
-    else {
-        cartaoResultado = `
+        html += `<div style="margin-top:15px;padding:12px;background:#ffebee;border-radius:8px;border-left:5px solid #c62828;">⚠️ Sem valor matemático</div>`;
+        window.dadosTemp = null;
+    } else {
+        // Dentro da função exibirResultados:
+        // Dentro de exibirResultados, logo antes do cartão verde:
+        const ehPri1x2 = (melhor.nome === "Casa" || melhor.nome === "Fora") && melhor.prob >= 0.43 && melhor.prob <= 0.60;
+        const ehPriOver = (melhor.nome === "Over 2.5") && melhor.prob >= 0.65;
+        const ehPriBTTS = (melhor.nome === "BTTS") && melhor.prob >= 0.60;
+
+        const etiqueta = ehPri1x2 ? "🎯 ODD DE VALOR" :
+            (ehPriOver ? "📈 PRIORIDADE OVER" :
+                (ehPriBTTS ? "⚽ PRIORIDADE BTTS" : "💰 MAIOR EV"));
+
+
+
+        html += `
         <div style="margin-top:15px;padding:12px;background:#e8f5e9;border-radius:8px;border-left:5px solid #2e7d32;">
-            <b>🎯 Melhor Aposta:</b> ${melhor.nome}<br>
-            EV: <b>${(melhor.ev || 0).toFixed(2)}</b> | Stake: <b>${(melhor.stake || 0).toFixed(1)}%</b>
+            <small style="background:#1a237e;color:white;padding:2px 5px;border-radius:3px">${etiqueta}</small><br>
+            <b>Aposta:</b> ${melhor.nome}<br>
+            <b>EV:</b> ${melhor.ev.toFixed(2)} | <b>Stake:</b> ${melhor.stake.toFixed(1)}%
         </div>`;
 
-        // SALVAR DADOS APENAS SE TIVER VALOR
         window.dadosTemp = {
             time: document.getElementById('nomeJogo')?.value || "Jogo",
-            ev: melhor.ev,
-            odd: melhor.odd,
-            stake: melhor.stake,
+            ev: melhor.ev, odd: melhor.odd, stake: melhor.stake,
             pC, pE, pF, pB: pBTTS, pO: pOver, pU: pUnder,
-            expGols: totalGols,
-            principal: melhor.nome,
-            lucro: 0
+            expGols: totalGols, principal: melhor.nome, lucro: 0
         };
     }
 
-    html += cartaoResultado;
-
-    // Botão de salvar (só habilitado se houver valor)
-    const btnDisabled = (!melhor.nome || melhor.nome === "Sem valor") ? "opacity:0.5; cursor:not-allowed;" : "";
-
-    html += `
-    <button onclick="${window.dadosTemp ? 'salvarResultado()' : 'alert(\'Sem valor para salvar\')'}"
-        style="margin-top:15px;width:100%;padding:12px;background:#1a237e;color:#fff;border:none;border-radius:8px;font-weight:bold; ${btnDisabled}">
-        💾 SALVAR NA TABELA
-    </button>`;
-
+    html += `<button onclick="${window.dadosTemp ? 'salvarResultado()' : 'alert(\'Sem valor\')'}" style="margin-top:15px;width:100%;padding:12px;background:#1a237e;color:#fff;border:none;border-radius:8px;font-weight:bold;cursor:pointer;">💾 SALVAR NA TABELA</button>`;
     painel.innerHTML = html;
 }
-
-
 
 function salvarResultado() {
     console.log("🚨 salvarResultado chamada");
@@ -286,18 +220,22 @@ function salvarResultado() {
     }
 
     try {
+        // 1. Pega o histórico atual
         let historico = JSON.parse(localStorage.getItem('meuHistoricoApostas')) || [];
 
-        // Adiciona ao início da lista
+        // 2. Adiciona a data/hora ANTES de salvar
+        window.dadosTemp.data = new Date().toLocaleString('pt-BR');
+
+        // 3. Adiciona ao início da lista (unshift)
         historico.unshift(window.dadosTemp);
 
-        // Salva de volta no LocalStorage
+        // 4. Salva no LocalStorage
         localStorage.setItem('meuHistoricoApostas', JSON.stringify(historico));
 
-        // Limpa o dado temporário para evitar duplicatas
+        // 5. Limpa o dado temporário para evitar salvar o mesmo jogo duas vezes
         window.dadosTemp = null;
 
-        // Atualiza a interface
+        // 6. Atualiza a tabela na tela
         renderizarTabela();
 
         console.log("✅ salvo com sucesso");
@@ -309,26 +247,30 @@ function salvarResultado() {
     }
 }
 
-
 window.executarAnalise = executarAnalise;
 window.exibirResultados = exibirResultados;
 window.salvarResultado = salvarResultado;
-function renderizarTabela() {
 
+function renderizarTabela() {
     const hist = JSON.parse(localStorage.getItem('meuHistoricoApostas')) || [];
     const corpo = document.getElementById('corpoTabela');
 
+    if (!corpo) return;
+
     let lucroTotal = 0;
-    const bancaBase = 100;
+    const bancaBase = 100; // Valor fixo para cálculo de saldo inicial
 
     corpo.innerHTML = hist.map((j, i) => {
-
         const lucro = Number(j.lucro) || 0;
         lucroTotal += lucro;
 
+        // Define a cor do lucro para visualização rápida
+        const corLucro = lucro > 0 ? "green" : (lucro < 0 ? "red" : "black");
+
         return `
         <tr>
-            <td>${j.time}</td>
+            <td style="font-size: 11px; color: #666;">${j.data || '-'}</td>
+            <td style="font-weight: bold;">${j.time}</td>
             <td>${Number(j.ev).toFixed(2)}</td>
             <td>${Number(j.odd).toFixed(2)}</td>
             <td>${Number(j.stake).toFixed(1)}%</td>
@@ -339,42 +281,59 @@ function renderizarTabela() {
             <td>${Number(j.pO).toFixed(1)}%</td>
             <td>${Number(j.pU || 0).toFixed(1)}%</td>
             <td>${Number(j.expGols).toFixed(2)}</td>
-            <td><b>${j.principal}</b></td>
+            
+            <td style="background: #f0f7ff; color: #1a237e;">
+                <b>${j.principal}</b>
+            </td>
 
             <td>
                 ${j.golsC !== undefined
-                ? `${j.golsC} x ${j.golsF}`
+                ? `<span style="font-weight:bold;">${j.golsC} x ${j.golsF}</span>`
                 : `
-                    <input id="resC-${i}" type="number" style="width:40px;">
-                    x
-                    <input id="resF-${i}" type="number" style="width:40px;">
-                    <button onclick="validarPlacar(${i})">✔</button>
+                    <div style="display:flex; align-items:center; gap:3px;">
+                        <input id="resC-${i}" type="number" style="width:35px; padding:2px;">
+                        x
+                        <input id="resF-${i}" type="number" style="width:35px; padding:2px;">
+                        <button onclick="validarPlacar(${i})" style="cursor:pointer; background:#4caf50; color:white; border:none; border-radius:3px; padding:2px 5px;">✔</button>
+                    </div>
                 `}
             </td>
 
-            <td>R$ ${lucro.toFixed(2)}</td>
+            <td style="color: ${corLucro}; font-weight: bold;">
+                R$ ${lucro.toFixed(2)}
+            </td>
 
             <td>
-                <button onclick="excluir(${i})">🗑️</button>
+                <button onclick="excluir(${i})" style="cursor:pointer; background:none; border:none; font-size:16px;">🗑️</button>
             </td>
         </tr>`;
     }).join('');
 
+    // --- CÁLCULOS DE PERFORMANCE ---
     const saldoAtual = bancaBase + lucroTotal;
 
-    // 📊 ROI
-    const totalInvestido = hist.reduce((acc, j) => acc + (100 * (j.stake / 100)), 0);
+    // Total investido é a soma das stakes (em R$) baseadas na banca de 100
+    const totalInvestido = hist.reduce((acc, j) => acc + (bancaBase * (Number(j.stake) / 100)), 0);
+
+    // ROI = (Lucro Líquido / Valor Investido) * 100
     const roi = totalInvestido > 0 ? (lucroTotal / totalInvestido) * 100 : 0;
 
-    document.getElementById('lucroTotal').innerText =
-        `Lucro: R$ ${lucroTotal.toFixed(2)}`;
+    // Atualiza os elementos de resumo na interface
+    if (document.getElementById('lucroTotal')) {
+        document.getElementById('lucroTotal').innerText = `Lucro Acumulado: R$ ${lucroTotal.toFixed(2)}`;
+        document.getElementById('lucroTotal').style.color = lucroTotal >= 0 ? "green" : "red";
+    }
 
-    document.getElementById('saldoAtual').innerText =
-        `Saldo Atual: R$ ${saldoAtual.toFixed(2)}`;
+    if (document.getElementById('saldoAtual')) {
+        document.getElementById('saldoAtual').innerText = `Saldo Atual: R$ ${saldoAtual.toFixed(2)}`;
+    }
 
-    document.getElementById('roi').innerText =
-        `ROI: ${roi.toFixed(2)}%`;
+    if (document.getElementById('roi')) {
+        document.getElementById('roi').innerText = `ROI: ${roi.toFixed(2)}%`;
+        document.getElementById('roi').style.color = roi >= 0 ? "green" : "red";
+    }
 }
+
 
 function validarPlacar(index) {
     let hist = JSON.parse(localStorage.getItem('meuHistoricoApostas')) || [];
