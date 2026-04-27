@@ -104,9 +104,19 @@ function executarAnalise() {
 
     const kelly = (p, o) => {
         if (!o || o <= 1) return 0;
+
         const b = o - 1;
         const k = ((b * p) - (1 - p)) / b;
-        return k > 0 ? Math.min(k * 0.25 * 100, 5) : 0;
+
+        if (k <= 0) return 0;
+
+        let stake = k * 0.25 * 100;
+
+        // 🔥 CONTROLE POR ODD
+        if (o >= 3.0) stake *= 0.5;   // corta pela metade
+        if (o >= 4.0) stake *= 0.5;   // corta mais ainda
+
+        return Math.min(stake, 5);
     };
 
     let evList = [
@@ -121,18 +131,26 @@ function executarAnalise() {
     let melhor = { nome: "Sem valor", ev: 0, odd: 0, stake: 0, prob: 0 };
 
     // 🎯 HIERARQUIA COM TRAVA DE SEGURANÇA (MELHORIA AQUI)
-    let pri1x2 = evList.find(i => (i.nome === "Casa" || i.nome === "Fora") && i.prob >= 0.43 && i.prob <= 0.60 && i.ev > 0 && i.ev <= 0.70);
+    let pri1x2 = evList.find(i =>
+        (i.nome === "Casa" || i.nome === "Fora") &&
+        i.prob >= 0.43 &&
+        i.prob <= 0.60 &&
+        i.ev > 0
+    );
     let priOver = evList.find(i => i.nome === "Over 2.5" && i.prob >= 0.65 && i.ev > 0.05);
-    let priBTTS = evList.find(i => i.nome === "BTTS" && i.prob >= 0.60 && i.ev > 0.05);
+    const bloquearBTTS = ataqueCasa < 1.0 || ataqueFora < 1.0;
 
-    if (pri1x2) {
+    let priBTTS = !bloquearBTTS
+        ? evList.find(i => i.nome === "BTTS" && i.prob >= 0.60 && i.ev > 0.05)
+        : null;
+
+    if (pri1x2 && (!priOver || pri1x2.ev > priOver.ev)) {
         melhor = pri1x2;
     } else if (priOver) {
         melhor = priOver;
     } else if (priBTTS) {
         melhor = priBTTS;
     } else {
-        // Se não bater nenhum critério do programa, retorna "Sem valor"
         melhor = { nome: "Sem valor", ev: 0, odd: 0, stake: 0, prob: 0 };
     }
 
