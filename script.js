@@ -3,7 +3,6 @@ function executarAnalise() {
 
     // 🎯 CONFIGURAÇÕES DE ENTRADA
     const motivacaoEl = document.getElementById('motivacao');
-    // Melhor captura para garantir que lê o valor atualizado do HTML
     let motivacao = parseFloat(motivacaoEl?.value) || 1;
 
     const mercado = {
@@ -49,11 +48,10 @@ function executarAnalise() {
     let lambdaCasa = (ataqueCasaSafe / mediaLiga) * ((defesaForaSafe / mediaLiga) * 0.95) * mediaLiga;
     let lambdaFora = (ataqueForaSafe / mediaLiga) * ((defesaCasaSafe / mediaLiga) * 0.95) * mediaLiga;
 
-    // Peso da forma
     if (formaCasa > 0) lambdaCasa *= (1 + ((formaCasa - mediaLiga) / mediaLiga) * 0.08);
     if (formaFora > 0) lambdaFora *= (1 + ((formaFora - mediaLiga) / mediaLiga) * 0.08);
 
-    // 🚧 LIMITADOR DINÂMICO (Vem antes da motivação para não anular o boost)
+    // 🚧 LIMITADOR DINÂMICO
     let totalPre = lambdaCasa + lambdaFora;
     let minGols = mediaLiga * 0.85;
     let maxGols = mediaLiga * 1.25;
@@ -67,11 +65,9 @@ function executarAnalise() {
         lambdaCasa *= f; lambdaFora *= f;
     }
 
-    // 🚀 APLICAÇÃO DA MOTIVAÇÃO (Agora ela realmente altera o placar final)
+    // 🚀 APLICAÇÃO DA MOTIVAÇÃO
     lambdaCasa *= motivacao;
     lambdaFora *= motivacao;
-
-    // Pequeno boost padrão
     lambdaCasa *= 1.01;
     lambdaFora *= 1.01;
 
@@ -93,7 +89,6 @@ function executarAnalise() {
         }
     }
 
-    // Normalização
     pC /= soma; pF /= soma; pE /= soma;
     pO /= soma; pU /= soma; pB /= soma;
     let soma1x2 = pC + pE + pF;
@@ -125,27 +120,25 @@ function executarAnalise() {
 
     let melhor = { nome: "Sem valor", ev: 0, odd: 0, stake: 0, prob: 0 };
 
-    // 🎯 HIERARQUIA
+    // 🎯 HIERARQUIA COM TRAVA DE SEGURANÇA (MELHORIA AQUI)
     let pri1x2 = evList.find(i => (i.nome === "Casa" || i.nome === "Fora") && i.prob >= 0.43 && i.prob <= 0.60 && i.ev > 0 && i.ev <= 0.70);
     let priOver = evList.find(i => i.nome === "Over 2.5" && i.prob >= 0.65 && i.ev > 0.05);
     let priBTTS = evList.find(i => i.nome === "BTTS" && i.prob >= 0.60 && i.ev > 0.05);
 
-    if (pri1x2) melhor = pri1x2;
-    else if (priOver) melhor = priOver;
-    else if (priBTTS) melhor = priBTTS;
-    else {
-        let candidatos = evList.filter(i => {
-            let evM = (i.nome === "Casa" || i.nome === "Fora") ? 0.05 : 0.08;
-            return i.ev >= evM && i.prob >= 0.35 && i.ev <= 1.20;
-        });
-        if (candidatos.length > 0) {
-            candidatos.sort((a, b) => b.ev - a.ev);
-            melhor = candidatos[0];
-        }
+    if (pri1x2) {
+        melhor = pri1x2;
+    } else if (priOver) {
+        melhor = priOver;
+    } else if (priBTTS) {
+        melhor = priBTTS;
+    } else {
+        // Se não bater nenhum critério do programa, retorna "Sem valor"
+        melhor = { nome: "Sem valor", ev: 0, odd: 0, stake: 0, prob: 0 };
     }
 
     exibirResultados(pC * 100, pE * 100, pF * 100, pB * 100, pO * 100, pU * 100, evC, evE, evF, evB, evO, evU, kelly(pC, mercado.casa), kelly(pE, mercado.empate), kelly(pF, mercado.fora), kelly(pB, mercado.btts), kelly(pO, mercado.over), kelly(pU, mercado.under), lambdaCasa + lambdaFora, melhor);
 }
+
 
 function exibirResultados(pC, pE, pF, pBTTS, pOver, pUnder, evC, evE, evF, evB, evO, evU, kC, kE, kF, kB, kO, kU, totalGols, melhor) {
     const painel = document.getElementById('painelResultado');
