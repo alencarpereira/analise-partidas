@@ -144,7 +144,7 @@ function executarAnalise() {
     });
 
     let melhor = { nome: "Sem valor", ev: 0, odd: 0, stake: 0 };
-    let prioridade1x2 = candidatos.find(i => (i.nome === "Casa" || i.nome === "Fora") && i.prob >= 0.50);
+    let prioridade1x2 = candidatos.find(i => (i.nome === "Casa" || i.nome === "Fora") && i.prob >= 0.41);
 
     if (prioridade1x2) {
         melhor = prioridade1x2;
