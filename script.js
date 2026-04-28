@@ -130,30 +130,57 @@ function executarAnalise() {
 
     let melhor = { nome: "Sem valor", ev: 0, odd: 0, stake: 0, prob: 0 };
 
-    // 🎯 HIERARQUIA COM TRAVA DE SEGURANÇA (MELHORIA AQUI)
+    // 🎯 HIERARQUIA COM TRAVA DE SEGURANÇA (VERSÃO FINAL)
+
     let pri1x2 = evList.find(i =>
         (i.nome === "Casa" || i.nome === "Fora") &&
         i.prob >= 0.43 &&
         i.prob <= 0.60 &&
         i.ev > 0
     );
-    let priOver = evList.find(i => i.nome === "Over 2.5" && i.prob >= 0.65 && i.ev > 0.05);
+
+    let priOver = evList.find(i =>
+        i.nome === "Over 2.5" &&
+        i.prob >= 0.65 &&
+        i.ev > 0.05
+    );
+
+    // 🚫 BLOQUEIO BASE BTTS
     const bloquearBTTS = ataqueCasa < 1.0 || ataqueFora < 1.0;
 
-    let priBTTS = !bloquearBTTS
+    // 🔥 FILTROS DE QUALIDADE DO JOGO
+    const jogoAberto = (lambdaCasa + lambdaFora) >= 2.8;
+    const ataquesFortes = ataqueCasa >= 1.2 && ataqueFora >= 1.2;
+
+    // 🎯 BTTS PREMIUM
+    let priBTTS = (!bloquearBTTS && jogoAberto && ataquesFortes)
         ? evList.find(i =>
             i.nome === "BTTS" &&
-            i.prob >= 0.62 &&   // sobe de 0.60
-            i.ev > 0.08         // sobe de 0.05
+            i.prob >= 0.63 &&
+            i.ev >= 0.10
         )
         : null;
 
-    if (pri1x2 && (!priOver || pri1x2.ev > priOver.ev)) {
+    // ⚖️ MARGEM DE SEGURANÇA ENTRE MERCADOS
+    const margem = 0.05;
+
+    // 🧠 DECISÃO FINAL (PRIORIDADE + QUALIDADE)
+    if (
+        pri1x2 &&
+        (!priOver || pri1x2.ev >= priOver.ev + margem) &&
+        (!priBTTS || pri1x2.ev >= priBTTS.ev + margem)
+    ) {
         melhor = pri1x2;
-    } else if (priOver) {
+
+    } else if (
+        priOver &&
+        (!priBTTS || priOver.ev >= priBTTS.ev + margem)
+    ) {
         melhor = priOver;
+
     } else if (priBTTS) {
         melhor = priBTTS;
+
     } else {
         melhor = { nome: "Sem valor", ev: 0, odd: 0, stake: 0, prob: 0 };
     }
