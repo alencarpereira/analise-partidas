@@ -141,7 +141,11 @@ function executarAnalise() {
     const bloquearBTTS = ataqueCasa < 1.0 || ataqueFora < 1.0;
 
     let priBTTS = !bloquearBTTS
-        ? evList.find(i => i.nome === "BTTS" && i.prob >= 0.60 && i.ev > 0.05)
+        ? evList.find(i =>
+            i.nome === "BTTS" &&
+            i.prob >= 0.62 &&   // sobe de 0.60
+            i.ev > 0.08         // sobe de 0.05
+        )
         : null;
 
     if (pri1x2 && (!priOver || pri1x2.ev > priOver.ev)) {
