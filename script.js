@@ -118,7 +118,6 @@ function executarAnalise() {
 
         return Math.min(stake, 5);
     };
-
     let evList = [
         { nome: "Casa", ev: evC, prob: pC, odd: mercado.casa, stake: kelly(pC, mercado.casa) },
         { nome: "Empate", ev: evE, prob: pE, odd: mercado.empate, stake: kelly(pE, mercado.empate) },
@@ -127,6 +126,13 @@ function executarAnalise() {
         { nome: "Over 2.5", ev: evO, prob: pO, odd: mercado.over, stake: kelly(pO, mercado.over) },
         { nome: "Under 2.5", ev: evU, prob: pU, odd: mercado.under, stake: kelly(pU, mercado.under) }
     ];
+
+    // 🔥 AJUSTE AQUI (ANTES DA HIERARQUIA)
+    evList.forEach(i => {
+        if (i.nome === "Over 2.5" || i.nome === "BTTS") {
+            i.ev *= 0.95;
+        }
+    });
 
     let melhor = { nome: "Sem valor", ev: 0, odd: 0, stake: 0, prob: 0 };
 
@@ -141,8 +147,8 @@ function executarAnalise() {
 
     let priOver = evList.find(i =>
         i.nome === "Over 2.5" &&
-        i.prob >= 0.65 &&
-        i.ev > 0.05
+        i.prob >= 0.67 &&
+        i.ev >= 0.08
     );
 
     // 🚫 BLOQUEIO BASE BTTS
