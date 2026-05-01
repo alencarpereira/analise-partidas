@@ -316,13 +316,13 @@ function salvarResultado() {
         // 🔒 1x2 → EV + prob mais leve
         (
             (window.dadosTemp.principal === "Casa" || window.dadosTemp.principal === "Fora") &&
-            (window.dadosTemp.ev < 0.12 || probPrincipal < 45)
+            (window.dadosTemp.ev < 0.11 || probPrincipal < 45)
         ) ||
 
         // 🔒 Outros mercados → EV + prob mais exigente
         (
             !(window.dadosTemp.principal === "Casa" || window.dadosTemp.principal === "Fora") &&
-            (window.dadosTemp.ev < 0.12 || probPrincipal < 60)
+            (window.dadosTemp.ev < 0.11 || probPrincipal < 60)
         )
     ) {
         alert("⚠️ Aposta não atende critérios profissionais!");
