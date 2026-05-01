@@ -127,50 +127,65 @@ function executarAnalise() {
         { nome: "Under 2.5", ev: evU, prob: pU, odd: mercado.under, stake: kelly(pU, mercado.under) }
     ];
 
-    // 🔥 AJUSTE AQUI (ANTES DA HIERARQUIA)
+    // 🔥 AJUSTE EV (mais inteligente)
     evList.forEach(i => {
         if (i.nome === "Over 2.5" || i.nome === "BTTS") {
-            i.ev *= 0.95;
+            if ((lambdaCasa + lambdaFora) < 2.6) {
+                i.ev *= 0.90; // penaliza jogo fechado
+            } else {
+                i.ev *= 0.97; // leve ajuste padrão
+            }
         }
     });
 
     let melhor = { nome: "Sem valor", ev: 0, odd: 0, stake: 0, prob: 0 };
 
-    // 🎯 HIERARQUIA COM TRAVA DE SEGURANÇA (VERSÃO FINAL)
+    // 🎯 HIERARQUIA
 
+    // 1️⃣ PRIORIDADE 1X2 (Casa / Fora)
     let pri1x2 = evList.find(i =>
         (i.nome === "Casa" || i.nome === "Fora") &&
         i.prob >= 0.43 &&
         i.prob <= 0.60 &&
-        i.ev > 0
+        i.ev >= 0.12
     );
 
+    // 2️⃣ OVER
     let priOver = evList.find(i =>
         i.nome === "Over 2.5" &&
-        i.prob >= 0.67 &&
-        i.ev >= 0.08
+        i.prob >= 0.60 &&
+        i.ev >= 0.12 &&
+        (lambdaCasa + lambdaFora) >= 2.8
     );
 
-    // 🚫 BLOQUEIO BASE BTTS
-    const bloquearBTTS = ataqueCasa < 1.0 || ataqueFora < 1.0;
+    // 🚫 BLOQUEIO BTTS
+    const bloquearBTTS = ataqueCasa < 1.1 || ataqueFora < 1.1;
 
-    // 🔥 FILTROS DE QUALIDADE DO JOGO
+    // 🔥 CONTEXTO
     const jogoAberto = (lambdaCasa + lambdaFora) >= 2.8;
-    const ataquesFortes = ataqueCasa >= 1.2 && ataqueFora >= 1.2;
+    const ataquesFortes = ataqueCasa >= 1.3 && ataqueFora >= 1.3;
 
-    // 🎯 BTTS PREMIUM
+    // 3️⃣ BTTS
     let priBTTS = (!bloquearBTTS && jogoAberto && ataquesFortes)
         ? evList.find(i =>
             i.nome === "BTTS" &&
-            i.prob >= 0.63 &&
-            i.ev >= 0.10
+            i.prob >= 0.60 &&
+            i.ev >= 0.12
         )
         : null;
 
-    // ⚖️ MARGEM DE SEGURANÇA ENTRE MERCADOS
+    // 4️⃣ UNDER (fallback)
+    let priUnder = evList.find(i =>
+        i.nome === "Under 2.5" &&
+        i.prob >= 0.58 &&
+        i.ev >= 0.10 &&
+        (lambdaCasa + lambdaFora) <= 2.6
+    );
+
+    // ⚖️ MARGEM ENTRE MERCADOS
     const margem = 0.05;
 
-    // 🧠 DECISÃO FINAL (PRIORIDADE + QUALIDADE)
+    // 🧠 DECISÃO FINAL (RESPEITANDO HIERARQUIA)
     if (
         pri1x2 &&
         (!priOver || pri1x2.ev >= priOver.ev + margem) &&
@@ -186,6 +201,9 @@ function executarAnalise() {
 
     } else if (priBTTS) {
         melhor = priBTTS;
+
+    } else if (priUnder) {
+        melhor = priUnder;
 
     } else {
         melhor = { nome: "Sem valor", ev: 0, odd: 0, stake: 0, prob: 0 };
@@ -292,6 +310,10 @@ function salvarResultado() {
     } catch (e) {
         console.error("Erro ao salvar no localStorage", e);
         alert("Erro ao salvar! Verifique se o navegador permite cookies/armazenamento.");
+    }
+    if (window.dadosTemp.ev < 0.12 || window.dadosTemp.prob < 60) {
+        alert("⚠️ Aposta não atende critérios profissionais!");
+        return;
     }
 }
 
