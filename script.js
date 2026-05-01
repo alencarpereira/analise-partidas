@@ -140,21 +140,36 @@ function executarAnalise() {
 
     let melhor = { nome: "Sem valor", ev: 0, odd: 0, stake: 0, prob: 0 };
 
-    // 🎯 HIERARQUIA
+    // 🎯 HIERARQUIAi.ev > 0.05
 
     // 1️⃣ PRIORIDADE 1X2 (Casa / Fora)
-    let pri1x2 = evList.find(i =>
-        (i.nome === "Casa" || i.nome === "Fora") &&
-        i.prob >= 0.43 &&
-        i.prob <= 0.60 &&
-        i.ev >= 0.12
-    );
+    // 🏠 FATOR CASA (leve vantagem)
+    const fatorCasa = 1.05;
+
+    let pri1x2 = evList
+        .filter(i => (i.nome === "Casa" || i.nome === "Fora"))
+        .map(i => {
+            let probAjustada = i.prob;
+
+            // aplica leve boost no mandante
+            if (i.nome === "Casa") {
+                probAjustada *= fatorCasa;
+            }
+
+            return { ...i, probAjustada };
+        })
+        .filter(i =>
+            i.probAjustada >= 0.45 &&   // sobe um pouco o nível
+            i.probAjustada <= 0.65 &&   // evita favorito esmagador
+            i.ev > 0                    // 🔥 só garante que não é aposta ruim
+        )
+        .sort((a, b) => b.probAjustada - a.probAjustada)[0];
 
     // 2️⃣ OVER
     let priOver = evList.find(i =>
         i.nome === "Over 2.5" &&
-        i.prob >= 0.60 &&
         i.ev >= 0.12 &&
+        i.prob >= 0.55 &&   // só pra evitar over "fake"
         (lambdaCasa + lambdaFora) >= 2.8
     );
 
@@ -169,16 +184,16 @@ function executarAnalise() {
     let priBTTS = (!bloquearBTTS && jogoAberto && ataquesFortes)
         ? evList.find(i =>
             i.nome === "BTTS" &&
-            i.prob >= 0.60 &&
-            i.ev >= 0.12
+            i.ev >= 0.12 &&
+            i.prob >= 0.55
         )
         : null;
 
     // 4️⃣ UNDER (fallback)
     let priUnder = evList.find(i =>
         i.nome === "Under 2.5" &&
-        i.prob >= 0.58 &&
         i.ev >= 0.10 &&
+        i.prob >= 0.55 &&
         (lambdaCasa + lambdaFora) <= 2.6
     );
 
@@ -188,8 +203,8 @@ function executarAnalise() {
     // 🧠 DECISÃO FINAL (RESPEITANDO HIERARQUIA)
     if (
         pri1x2 &&
-        (!priOver || pri1x2.ev >= priOver.ev + margem) &&
-        (!priBTTS || pri1x2.ev >= priBTTS.ev + margem)
+        (!priOver || pri1x2.probAjustada >= priOver.prob + 0.03) &&
+        (!priBTTS || pri1x2.probAjustada >= priBTTS.prob + 0.03)
     ) {
         melhor = pri1x2;
 
@@ -239,9 +254,11 @@ function exibirResultados(pC, pE, pF, pBTTS, pOver, pUnder, evC, evE, evF, evB, 
     } else {
         // Dentro da função exibirResultados:
         // Dentro de exibirResultados, logo antes do cartão verde:
-        const ehPri1x2 = (melhor.nome === "Casa" || melhor.nome === "Fora") && melhor.prob >= 0.43 && melhor.prob <= 0.60;
-        const ehPriOver = (melhor.nome === "Over 2.5") && melhor.prob >= 0.65;
-        const ehPriBTTS = (melhor.nome === "BTTS") && melhor.prob >= 0.60;
+        const ehPri1x2 = (melhor.nome === "Casa" || melhor.nome === "Fora");
+
+        const ehPriOver = (melhor.nome === "Over 2.5") && melhor.prob >= 0.55;
+
+        const ehPriBTTS = (melhor.nome === "BTTS") && melhor.prob >= 0.55;
 
         const etiqueta = ehPri1x2 ? "🎯 ODD DE VALOR" :
             (ehPriOver ? "📈 PRIORIDADE OVER" :
@@ -285,23 +302,33 @@ function salvarResultado() {
         return;
     }
 
+    // 🔥 PEGA PROBABILIDADE DO MERCADO PRINCIPAL
+    let probPrincipal = 0;
+
+    if (window.dadosTemp.principal === "Casa") probPrincipal = window.dadosTemp.pC;
+    else if (window.dadosTemp.principal === "Fora") probPrincipal = window.dadosTemp.pF;
+    else if (window.dadosTemp.principal === "BTTS") probPrincipal = window.dadosTemp.pB;
+    else if (window.dadosTemp.principal === "Over 2.5") probPrincipal = window.dadosTemp.pO;
+    else if (window.dadosTemp.principal === "Under 2.5") probPrincipal = window.dadosTemp.pU;
+
+    // 🔒 VALIDA ANTES DE SALVAR
+    if (window.dadosTemp.ev < 0.12 || probPrincipal < 60) {
+        alert("⚠️ Aposta não atende critérios profissionais!");
+        return;
+    }
+
     try {
-        // 1. Pega o histórico atual
         let historico = JSON.parse(localStorage.getItem('meuHistoricoApostas')) || [];
 
-        // 2. Adiciona a data/hora ANTES de salvar
         window.dadosTemp.data = new Date().toLocaleString('pt-BR');
 
-        // 3. Adiciona ao início da lista (unshift)
         historico.unshift(window.dadosTemp);
 
-        // 4. Salva no LocalStorage
         localStorage.setItem('meuHistoricoApostas', JSON.stringify(historico));
 
-        // 5. Limpa o dado temporário para evitar salvar o mesmo jogo duas vezes
+        // limpa só depois de salvar
         window.dadosTemp = null;
 
-        // 6. Atualiza a tabela na tela
         renderizarTabela();
 
         console.log("✅ salvo com sucesso");
@@ -309,11 +336,7 @@ function salvarResultado() {
 
     } catch (e) {
         console.error("Erro ao salvar no localStorage", e);
-        alert("Erro ao salvar! Verifique se o navegador permite cookies/armazenamento.");
-    }
-    if (window.dadosTemp.ev < 0.12 || window.dadosTemp.prob < 60) {
-        alert("⚠️ Aposta não atende critérios profissionais!");
-        return;
+        alert("Erro ao salvar! Verifique o armazenamento.");
     }
 }
 
