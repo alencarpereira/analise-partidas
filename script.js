@@ -312,7 +312,19 @@ function salvarResultado() {
     else if (window.dadosTemp.principal.includes("Under")) probPrincipal = window.dadosTemp.pU;
 
     // 🔒 VALIDA ANTES DE SALVAR
-    if (window.dadosTemp.ev < 0.12 || probPrincipal < 60) {
+    if (
+        // 🔒 1x2 → EV + prob mais leve
+        (
+            (window.dadosTemp.principal === "Casa" || window.dadosTemp.principal === "Fora") &&
+            (window.dadosTemp.ev < 0.12 || probPrincipal < 45)
+        ) ||
+
+        // 🔒 Outros mercados → EV + prob mais exigente
+        (
+            !(window.dadosTemp.principal === "Casa" || window.dadosTemp.principal === "Fora") &&
+            (window.dadosTemp.ev < 0.12 || probPrincipal < 60)
+        )
+    ) {
         alert("⚠️ Aposta não atende critérios profissionais!");
         return;
     }
