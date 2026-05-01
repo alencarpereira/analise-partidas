@@ -58,16 +58,24 @@ function executarAnalise() {
 
     if (totalPre > maxGols) {
         const f = maxGols / totalPre;
-        lambdaCasa *= f; lambdaFora *= f;
+        lambdaCasa *= f;
+        lambdaFora *= f;
     }
     if (totalPre < minGols) {
         const f = minGols / totalPre;
-        lambdaCasa *= f; lambdaFora *= f;
+        lambdaCasa *= f;
+        lambdaFora *= f;
     }
+
+    // 🏠 FATOR CASA (equilibrado 🔥)
+    lambdaCasa *= 1.06;
+    lambdaFora *= 0.94;
 
     // 🚀 APLICAÇÃO DA MOTIVAÇÃO
     lambdaCasa *= motivacao;
     lambdaFora *= motivacao;
+
+    // 🔧 AJUSTE FINAL
     lambdaCasa *= 1.01;
     lambdaFora *= 1.01;
 
@@ -145,18 +153,10 @@ function executarAnalise() {
     // 1️⃣ PRIORIDADE 1X2 (Casa / Fora)
     // 🏠 FATOR CASA (leve vantagem)
     const fatorCasa = 1.05;
-
     let pri1x2 = evList
         .filter(i => (i.nome === "Casa" || i.nome === "Fora"))
         .map(i => {
-            let probAjustada = i.prob;
-
-            // aplica leve boost no mandante
-            if (i.nome === "Casa") {
-                probAjustada *= fatorCasa;
-            }
-
-            return { ...i, probAjustada };
+            return { ...i, probAjustada: i.prob };
         })
         .filter(i =>
             i.probAjustada >= 0.45 &&   // sobe um pouco o nível
