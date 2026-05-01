@@ -161,7 +161,7 @@ function executarAnalise() {
         .filter(i =>
             i.probAjustada >= 0.45 &&   // sobe um pouco o nível
             i.probAjustada <= 0.65 &&   // evita favorito esmagador
-            i.ev > 0                    // 🔥 só garante que não é aposta ruim
+            i.ev >= 0.08                   // 🔥 só garante que não é aposta ruim
         )
         .sort((a, b) => b.probAjustada - a.probAjustada)[0];
 
