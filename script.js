@@ -305,11 +305,11 @@ function salvarResultado() {
     // 🔥 PEGA PROBABILIDADE DO MERCADO PRINCIPAL
     let probPrincipal = 0;
 
-    if (window.dadosTemp.principal === "Casa") probPrincipal = window.dadosTemp.pC;
-    else if (window.dadosTemp.principal === "Fora") probPrincipal = window.dadosTemp.pF;
-    else if (window.dadosTemp.principal === "BTTS") probPrincipal = window.dadosTemp.pB;
-    else if (window.dadosTemp.principal === "Over 2.5") probPrincipal = window.dadosTemp.pO;
-    else if (window.dadosTemp.principal === "Under 2.5") probPrincipal = window.dadosTemp.pU;
+    if (window.dadosTemp.principal.includes("Casa")) probPrincipal = window.dadosTemp.pC;
+    else if (window.dadosTemp.principal.includes("Fora")) probPrincipal = window.dadosTemp.pF;
+    else if (window.dadosTemp.principal.includes("BTTS")) probPrincipal = window.dadosTemp.pB;
+    else if (window.dadosTemp.principal.includes("Over")) probPrincipal = window.dadosTemp.pO;
+    else if (window.dadosTemp.principal.includes("Under")) probPrincipal = window.dadosTemp.pU;
 
     // 🔒 VALIDA ANTES DE SALVAR
     if (window.dadosTemp.ev < 0.12 || probPrincipal < 60) {
