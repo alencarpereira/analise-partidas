@@ -320,15 +320,37 @@ function salvarResultado() {
         `Deseja salvar a análise de: ${window.dadosTemp.time}?`
     );
 
-    if (!confirmar) {
-        console.log("❌ cancelado");
-        return;
+    if (!confirmar) return;
+
+    // 🔥 PROB DO MERCADO PRINCIPAL
+    let probPrincipal = 0;
+
+    if (window.dadosTemp.principal.includes("Casa")) probPrincipal = window.dadosTemp.pC;
+    else if (window.dadosTemp.principal.includes("Fora")) probPrincipal = window.dadosTemp.pF;
+    else if (window.dadosTemp.principal.includes("BTTS")) probPrincipal = window.dadosTemp.pB;
+    else if (window.dadosTemp.principal.includes("Over")) probPrincipal = window.dadosTemp.pO;
+    else if (window.dadosTemp.principal.includes("Under")) probPrincipal = window.dadosTemp.pU;
+
+    // 📊 EDGE REAL
+    const edge = (window.dadosTemp.ev || 0) * (probPrincipal / 100);
+
+    // 🧠 CLASSIFICAÇÃO
+    let nivel = "🔴 RISCO";
+
+    if (edge >= 0.04) {
+        nivel = "🟢 VALOR";
+    } else if (edge >= 0.02) {
+        nivel = "🟡 NEUTRO";
     }
 
     try {
         let historico = JSON.parse(localStorage.getItem('meuHistoricoApostas')) || [];
 
         window.dadosTemp.data = new Date().toLocaleString('pt-BR');
+
+        // 🔥 adiciona classificação
+        window.dadosTemp.nivel = nivel;
+        window.dadosTemp.edge = edge;
 
         historico.unshift(window.dadosTemp);
 
@@ -339,11 +361,11 @@ function salvarResultado() {
         renderizarTabela();
 
         console.log("✅ salvo com sucesso");
-        alert("Análise salva no histórico!");
+        alert(`Análise salva! Classificação: ${nivel}`);
 
     } catch (e) {
-        console.error("Erro ao salvar no localStorage", e);
-        alert("Erro ao salvar! Verifique o armazenamento.");
+        console.error("Erro ao salvar", e);
+        alert("Erro ao salvar!");
     }
 }
 
