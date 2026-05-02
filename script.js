@@ -172,59 +172,36 @@ function executarAnalise() {
         .sort((a, b) => b.probAjustada - a.probAjustada)[0];
 
 
-    // 2️⃣ OVER (PROBABILIDADE AJUSTADA + PESO DINÂMICO)
-    let totalLambda = lambdaCasa + lambdaFora;
-
-    let pesoOver = 1;
-
-    if (totalLambda < 2.2) pesoOver *= 0.65;
-    else if (totalLambda < 2.6) pesoOver *= 0.85;
-    else if (totalLambda > 3.2) pesoOver *= 1.10;
-
-    evList.forEach(i => {
-        if (i.nome === "Over 2.5") {
-            i.ev *= pesoOver;
-
-            // 🔵 AJUSTE DE PROBABILIDADE OVER
-            if (totalLambda < 2.2) i.prob *= 0.85;
-            else if (totalLambda < 2.6) i.prob *= 0.95;
-            else if (totalLambda > 3.0) i.prob *= 1.05;
-        }
-    });
-
-    let totalLambda = lambdaCasa + lambdaFora;
-
+    // 📊 OVER (SEM DISTORCER EV E COM REGRA MAIS ESTÁVEL)
     let priOver = evList.find(i =>
         i.nome === "Over 2.5" &&
         i.ev >= 0.10 &&
         i.prob >= 0.52 &&
         (
-            totalLambda >= 2.4 &&
-            i.ev > 0 || totalLambda >= 3.0
+            totalLambda >= 3.0 ||
+            (totalLambda >= 2.4 && i.ev >= 0.08)
         )
     );
 
-    // 🚫 BTTS (PROBABILIDADE AJUSTADA + CONTEXTO)
+
+    // 🚫 BTTS (SEM ALTERAR EV GLOBAL → AGORA LOCAL)
     const bloquearBTTS = ataqueCasa < 1.1 || ataqueFora < 1.1;
 
     const jogoAberto = totalLambda >= 2.8;
     const ataquesFortes = ataqueCasa >= 1.3 && ataqueFora >= 1.3;
 
-    evList.forEach(i => {
-        if (i.nome === "BTTS") {
+    // probabilidade local (NÃO mexe no evList inteiro)
+    let bttsProb = pB;
 
-            // 🟣 AJUSTE DE PROBABILIDADE BTTS
-            if (ataquesFortes) i.prob *= 1.08;
-            if (bloquearBTTS) i.prob *= 0.85;
-            if (jogoAberto) i.prob *= 1.03;
-        }
-    });
+    if (ataquesFortes) bttsProb *= 1.08;
+    if (bloquearBTTS) bttsProb *= 0.85;
+    if (jogoAberto) bttsProb *= 1.03;
 
     let priBTTS = (!bloquearBTTS && jogoAberto && ataquesFortes)
         ? evList.find(i =>
             i.nome === "BTTS" &&
             i.ev >= 0.12 &&
-            i.prob >= 0.55
+            bttsProb >= 0.55
         )
         : null;
 
@@ -253,7 +230,7 @@ function executarAnalise() {
 
     } else if (
         priOver &&
-        (!priBTTS || priOver.ev >= priBTTS.ev)
+        (!priBTTS || (priOver.ev * priOver.prob) >= (priBTTS.ev * priBTTS.prob))
     ) {
         melhor = priOver;
 
