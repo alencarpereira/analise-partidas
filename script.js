@@ -167,11 +167,15 @@ function executarAnalise() {
 
             return { ...i, probAjustada };
         })
-        .filter(i =>
-            i.probAjustada >= 0.40 &&   // mais entradas
-            i.probAjustada <= 0.70 &&
-            i.ev >= -0.03              // aceita leves distorções boas
-        )
+        .filter(i => {
+            const edge = i.ev * i.probAjustada;
+
+            return (
+                edge >= 0.02 &&
+                i.probAjustada >= 0.42 &&
+                i.probAjustada <= 0.70
+            );
+        })
         .sort((a, b) => b.probAjustada - a.probAjustada)[0];
 
 
