@@ -81,6 +81,7 @@ function executarAnalise() {
 
     // 📊 TOTAL DE GOLS ESPERADOS
     let totalLambda = lambdaCasa + lambdaFora;
+    let totalGols = lambdaCasa + lambdaFora;
 
     // 📐 POISSON
     const fatorial = n => { let r = 1; for (let i = 2; i <= n; i++) r *= i; return r; };
@@ -235,7 +236,6 @@ function executarAnalise() {
             }
         }
     }
-
 
     exibirResultados(pC * 100, pE * 100, pF * 100, pB * 100, pO * 100, pU * 100, evC, evE, evF, evB, evO, evU, kelly(pC, mercado.casa), kelly(pE, mercado.empate), kelly(pF, mercado.fora), kelly(pB, mercado.btts), kelly(pO, mercado.over), kelly(pU, mercado.under), lambdaCasa + lambdaFora, melhor);
 }
