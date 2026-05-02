@@ -325,30 +325,6 @@ function salvarResultado() {
         return;
     }
 
-    // 🔥 PEGA PROBABILIDADE DO MERCADO PRINCIPAL
-    let probPrincipal = 0;
-
-    if (window.dadosTemp.principal.includes("Casa")) probPrincipal = window.dadosTemp.pC;
-    else if (window.dadosTemp.principal.includes("Fora")) probPrincipal = window.dadosTemp.pF;
-    else if (window.dadosTemp.principal.includes("BTTS")) probPrincipal = window.dadosTemp.pB;
-    else if (window.dadosTemp.principal.includes("Over")) probPrincipal = window.dadosTemp.pO;
-    else if (window.dadosTemp.principal.includes("Under")) probPrincipal = window.dadosTemp.pU;
-
-    // 🔒 VALIDA ANTES DE SALVAR
-    if (
-        (
-            (window.dadosTemp.principal === "Casa" || window.dadosTemp.principal === "Fora") &&
-            (window.dadosTemp.ev <= 0.01 || probPrincipal < 45)
-        ) ||
-        (
-            !(window.dadosTemp.principal === "Casa" || window.dadosTemp.principal === "Fora") &&
-            (window.dadosTemp.ev <= 0.01 || probPrincipal < 60)
-        )
-    ) {
-        alert("⚠️ Aposta não atende critérios profissionais!");
-        return;
-    }
-
     try {
         let historico = JSON.parse(localStorage.getItem('meuHistoricoApostas')) || [];
 
@@ -358,7 +334,6 @@ function salvarResultado() {
 
         localStorage.setItem('meuHistoricoApostas', JSON.stringify(historico));
 
-        // limpa só depois de salvar
         window.dadosTemp = null;
 
         renderizarTabela();
