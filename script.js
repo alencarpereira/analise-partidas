@@ -338,11 +338,11 @@ function salvarResultado() {
     if (
         (
             (window.dadosTemp.principal === "Casa" || window.dadosTemp.principal === "Fora") &&
-            (window.dadosTemp.ev <= 0 || probPrincipal < 45)
+            (window.dadosTemp.ev <= 0.01 || probPrincipal < 45)
         ) ||
         (
             !(window.dadosTemp.principal === "Casa" || window.dadosTemp.principal === "Fora") &&
-            (window.dadosTemp.ev <= 0 || probPrincipal < 60)
+            (window.dadosTemp.ev <= 0.01 || probPrincipal < 60)
         )
     ) {
         alert("⚠️ Aposta não atende critérios profissionais!");
