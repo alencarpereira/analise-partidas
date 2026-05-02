@@ -148,39 +148,73 @@ function executarAnalise() {
 
     let melhor = { nome: "Sem valor", ev: 0, odd: 0, stake: 0, prob: 0 };
 
-    // 🎯 HIERARQUIAi.ev > 0.05
+    // 🎯 HIERARQUIA
 
     // 1️⃣ PRIORIDADE 1X2 (Casa / Fora)
-    // 🏠 FATOR CASA (leve vantagem)
     const fatorCasa = 1.05;
+
     let pri1x2 = evList
         .filter(i => (i.nome === "Casa" || i.nome === "Fora"))
         .map(i => {
-            return { ...i, probAjustada: i.prob };
+            let probAjustada = i.prob;
+
+            if (i.nome === "Casa") {
+                probAjustada *= fatorCasa;
+            }
+
+            return { ...i, probAjustada };
         })
         .filter(i =>
-            i.probAjustada >= 0.45 &&   // sobe um pouco o nível
-            i.probAjustada <= 0.65 &&   // evita favorito esmagador
-            i.ev >= 0.08                   // 🔥 só garante que não é aposta ruim
+            i.probAjustada >= 0.45 &&
+            i.probAjustada <= 0.65 &&
+            i.ev >= 0.08
         )
         .sort((a, b) => b.probAjustada - a.probAjustada)[0];
 
-    // 2️⃣ OVER
+
+    // 2️⃣ OVER (PROBABILIDADE AJUSTADA + PESO DINÂMICO)
+    let totalLambda = lambdaCasa + lambdaFora;
+
+    let pesoOver = 1;
+
+    if (totalLambda < 2.2) pesoOver *= 0.65;
+    else if (totalLambda < 2.6) pesoOver *= 0.85;
+    else if (totalLambda > 3.2) pesoOver *= 1.10;
+
+    evList.forEach(i => {
+        if (i.nome === "Over 2.5") {
+            i.ev *= pesoOver;
+
+            // 🔵 AJUSTE DE PROBABILIDADE OVER
+            if (totalLambda < 2.2) i.prob *= 0.85;
+            else if (totalLambda < 2.6) i.prob *= 0.95;
+            else if (totalLambda > 3.0) i.prob *= 1.05;
+        }
+    });
+
     let priOver = evList.find(i =>
         i.nome === "Over 2.5" &&
         i.ev >= 0.12 &&
-        i.prob >= 0.55 &&   // só pra evitar over "fake"
-        (lambdaCasa + lambdaFora) >= 2.8
+        i.prob >= 0.55
     );
 
-    // 🚫 BLOQUEIO BTTS
+
+    // 🚫 BTTS (PROBABILIDADE AJUSTADA + CONTEXTO)
     const bloquearBTTS = ataqueCasa < 1.1 || ataqueFora < 1.1;
 
-    // 🔥 CONTEXTO
-    const jogoAberto = (lambdaCasa + lambdaFora) >= 2.8;
+    const jogoAberto = totalLambda >= 2.8;
     const ataquesFortes = ataqueCasa >= 1.3 && ataqueFora >= 1.3;
 
-    // 3️⃣ BTTS
+    evList.forEach(i => {
+        if (i.nome === "BTTS") {
+
+            // 🟣 AJUSTE DE PROBABILIDADE BTTS
+            if (ataquesFortes) i.prob *= 1.08;
+            if (bloquearBTTS) i.prob *= 0.85;
+            if (jogoAberto) i.prob *= 1.03;
+        }
+    });
+
     let priBTTS = (!bloquearBTTS && jogoAberto && ataquesFortes)
         ? evList.find(i =>
             i.nome === "BTTS" &&
@@ -189,28 +223,32 @@ function executarAnalise() {
         )
         : null;
 
-    // 4️⃣ UNDER (fallback)
+
+    // 4️⃣ UNDER (fallback coerente)
     let priUnder = evList.find(i =>
         i.nome === "Under 2.5" &&
         i.ev >= 0.10 &&
         i.prob >= 0.55 &&
-        (lambdaCasa + lambdaFora) <= 2.6
+        totalLambda <= 2.6
     );
 
-    // ⚖️ MARGEM ENTRE MERCADOS
-    const margem = 0.05;
 
-    // 🧠 DECISÃO FINAL (RESPEITANDO HIERARQUIA)
+    // ⚖️ MARGEM ENTRE MERCADOS
+    const margem = 0.03;
+
+
+    // 🧠 DECISÃO FINAL (HIERARQUIA LIMPA E ESTÁVEL)
+
     if (
         pri1x2 &&
-        (!priOver || pri1x2.probAjustada >= priOver.prob + 0.03) &&
-        (!priBTTS || pri1x2.probAjustada >= priBTTS.prob + 0.03)
+        (!priOver || pri1x2.probAjustada >= priOver.prob) &&
+        (!priBTTS || pri1x2.probAjustada >= priBTTS.prob)
     ) {
         melhor = pri1x2;
 
     } else if (
         priOver &&
-        (!priBTTS || priOver.ev >= priBTTS.ev + margem)
+        (!priBTTS || priOver.ev >= priBTTS.ev)
     ) {
         melhor = priOver;
 
