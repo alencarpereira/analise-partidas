@@ -192,12 +192,17 @@ function executarAnalise() {
         }
     });
 
+    let totalLambda = lambdaCasa + lambdaFora;
+
     let priOver = evList.find(i =>
         i.nome === "Over 2.5" &&
-        i.ev >= 0.12 &&
-        i.prob >= 0.55
+        i.ev >= 0.10 &&
+        i.prob >= 0.52 &&
+        (
+            totalLambda >= 2.4 &&
+            i.ev > 0 || totalLambda >= 3.0
+        )
     );
-
 
     // 🚫 BTTS (PROBABILIDADE AJUSTADA + CONTEXTO)
     const bloquearBTTS = ataqueCasa < 1.1 || ataqueFora < 1.1;
