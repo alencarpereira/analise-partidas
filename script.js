@@ -196,7 +196,7 @@ function executarAnalise() {
         // ==========================
 
         // 🚀 JOGO MUITO ABERTO → OVER
-        if (totalGols >= 3.10) {
+        if (totalGols >= 3.20) {
 
             let priOver = evList.find(i =>
                 i.nome === "Over 2.5" &&
