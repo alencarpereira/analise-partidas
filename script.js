@@ -184,7 +184,7 @@ function executarAnalise() {
     // ==========================
     let priBTTS = evList.find(i =>
         i.nome === "BTTS" &&
-        i.ev >= 0.05 &&
+        i.ev >= 0.02 &&
         i.prob >= 0.52 &&
         i.prob <= 0.66
     );
