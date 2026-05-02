@@ -186,7 +186,7 @@ function executarAnalise() {
         i.nome === "BTTS" &&
         i.ev >= 0.05 &&
         i.prob >= 0.52 &&
-        i.prob <= 0.60
+        i.prob <= 0.66
     );
 
 
@@ -196,7 +196,7 @@ function executarAnalise() {
     let priOver = evList.find(i =>
         i.nome === "Over 2.5" &&
         i.ev >= 0.05 &&
-        i.prob >= 0.61
+        i.prob >= 0.67
     );
 
 
