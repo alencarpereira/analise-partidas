@@ -179,54 +179,58 @@ function executarAnalise() {
         .sort((a, b) => b.probAjustada - a.probAjustada)[0];
 
 
-    // 🎯 ==========================
-    // 2️⃣ BTTS (52% a 60%)
-    // ==========================
-    let priBTTS = evList.find(i =>
-        i.nome === "BTTS" &&
-        i.ev >= 0.02 &&
-        i.prob >= 0.52 &&
-        i.prob <= 0.66
-    );
-
-
-    // 🎯 ==========================
-    // 3️⃣ OVER (>= 61%)
-    // ==========================
-    let priOver = evList.find(i =>
-        i.nome === "Over 2.5" &&
-        i.ev >= 0.05 &&
-        i.prob >= 0.67
-    );
-
-
-    // 🎯 ==========================
-    // 4️⃣ UNDER (>= 68%)
-    // ==========================
-    let priUnder = evList.find(i =>
-        i.nome === "Under 2.5" &&
-        i.ev >= 0.05 &&
-        i.prob >= 0.68
-    );
-
-
     // 🧠 ==========================
-    // DECISÃO FINAL (HIERARQUIA)
+    // 2️⃣ DECISÃO FINAL INTELIGENTE
     // ==========================
+    const totalGols = lambdaCasa + lambdaFora;
+
     if (pri1x2) {
+
+        // 🥇 PRIORIDADE ABSOLUTA
         melhor = pri1x2;
 
-    } else if (priBTTS) {
-        melhor = priBTTS;
-
-    } else if (priOver) {
-        melhor = priOver;
-
-    } else if (priUnder) {
-        melhor = priUnder;
-
     } else {
-        melhor = { nome: "Sem valor", ev: 0, odd: 0, stake: 0, prob: 0 };
+
+        // 🔥 ==========================
+        // DETECÇÃO DE ESTILO DE JOGO
+        // ==========================
+
+        // 🚀 JOGO MUITO ABERTO → OVER
+        if (totalGols >= 3.10) {
+
+            let priOver = evList.find(i =>
+                i.nome === "Over 2.5" &&
+                i.ev >= 0.03 &&
+                i.prob >= 0.60
+            );
+
+            if (priOver) melhor = priOver;
+        }
+
+        // ⚖️ JOGO EQUILIBRADO → BTTS
+        else if (totalGols >= 2.40 && totalGols < 3.10) {
+
+            let priBTTS = evList.find(i =>
+                i.nome === "BTTS" &&
+                i.ev >= 0.02 &&
+                i.prob >= 0.52 &&
+                i.prob <= 0.66
+            );
+
+            if (priBTTS) melhor = priBTTS;
+        }
+
+        // 🧱 JOGO FECHADO → UNDER
+        else {
+
+            let priUnder = evList.find(i =>
+                i.nome === "Under 2.5" &&
+                i.ev >= 0.03 &&
+                i.prob >= 0.55
+            );
+
+            if (priUnder) melhor = priUnder;
+        }
     }
 
     exibirResultados(pC * 100, pE * 100, pF * 100, pB * 100, pO * 100, pU * 100, evC, evE, evF, evB, evO, evU, kelly(pC, mercado.casa), kelly(pE, mercado.empate), kelly(pF, mercado.fora), kelly(pB, mercado.btts), kelly(pO, mercado.over), kelly(pU, mercado.under), lambdaCasa + lambdaFora, melhor);
