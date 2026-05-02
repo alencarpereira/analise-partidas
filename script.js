@@ -168,53 +168,53 @@ function executarAnalise() {
             return { ...i, probAjustada };
         })
         .filter(i =>
-            i.probAjustada >= 0.45 &&
-            i.probAjustada <= 0.65 &&
-            i.ev >= 0.08
+            i.probAjustada >= 0.38 &&   // mais entradas
+            i.probAjustada <= 0.70 &&
+            i.ev >= -0.03              // aceita leves distorções boas
         )
         .sort((a, b) => b.probAjustada - a.probAjustada)[0];
 
 
-    // 📊 OVER (SEM DISTORCER EV E COM REGRA MAIS ESTÁVEL)
+    // 📊 OVER (mais realista e menos travado)
     let priOver = evList.find(i =>
         i.nome === "Over 2.5" &&
-        i.ev >= 0.10 &&
-        i.prob >= 0.52 &&
+        i.ev >= 0.05 &&
+        i.prob >= 0.56 &&
         (
             totalLambda >= 3.0 ||
-            (totalLambda >= 2.4 && i.ev >= 0.08)
+            (totalLambda >= 2.4 && i.ev >= 0.06)
         )
     );
 
 
-    // 🚫 BTTS (SEM ALTERAR EV GLOBAL → AGORA LOCAL)
+    // 🚫 BTTS (agora mais flexível e realista)
     const bloquearBTTS = ataqueCasa < 1.1 || ataqueFora < 1.1;
 
-    const jogoAberto = totalLambda >= 2.8;
+    const jogoAberto = totalLambda >= 2.7; // ligeiramente mais permissivo
     const ataquesFortes = ataqueCasa >= 1.3 && ataqueFora >= 1.3;
 
-    // probabilidade local (NÃO mexe no evList inteiro)
+    // probabilidade local (não altera base)
     let bttsProb = pB;
 
     if (ataquesFortes) bttsProb *= 1.08;
     if (bloquearBTTS) bttsProb *= 0.85;
     if (jogoAberto) bttsProb *= 1.03;
 
-    let priBTTS = (!bloquearBTTS && jogoAberto && ataquesFortes)
+    let priBTTS = (!bloquearBTTS && jogoAberto)
         ? evList.find(i =>
             i.nome === "BTTS" &&
-            i.ev >= 0.12 &&
-            bttsProb >= 0.55
+            i.ev >= 0.05 &&
+            bttsProb >= 0.52
         )
         : null;
 
 
-    // 4️⃣ UNDER (fallback coerente)
+    // 4️⃣ UNDER (menos restritivo)
     let priUnder = evList.find(i =>
         i.nome === "Under 2.5" &&
-        i.ev >= 0.10 &&
+        i.ev >= 0.05 &&
         i.prob >= 0.55 &&
-        totalLambda <= 2.6
+        totalLambda <= 2.7
     );
 
 
@@ -222,7 +222,7 @@ function executarAnalise() {
     const margem = 0.03;
 
 
-    // 🧠 DECISÃO FINAL (HIERARQUIA LIMPA E ESTÁVEL)
+    // 🧠 DECISÃO FINAL (HIERARQUIA LIMPA E CONSISTENTE)
 
     if (
         pri1x2 &&
