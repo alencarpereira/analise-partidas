@@ -168,7 +168,7 @@ function executarAnalise() {
             return { ...i, probAjustada };
         })
         .filter(i =>
-            i.probAjustada >= 0.38 &&   // mais entradas
+            i.probAjustada >= 0.40 &&   // mais entradas
             i.probAjustada <= 0.70 &&
             i.ev >= -0.03              // aceita leves distorções boas
         )
