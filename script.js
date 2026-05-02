@@ -79,6 +79,9 @@ function executarAnalise() {
     lambdaCasa *= 1.01;
     lambdaFora *= 1.01;
 
+    // 📊 TOTAL DE GOLS ESPERADOS
+    let totalLambda = lambdaCasa + lambdaFora;
+
     // 📐 POISSON
     const fatorial = n => { let r = 1; for (let i = 2; i <= n; i++) r *= i; return r; };
     const poisson = (l, k) => (Math.exp(-l) * Math.pow(l, k)) / fatorial(k);
