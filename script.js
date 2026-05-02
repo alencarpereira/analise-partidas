@@ -151,13 +151,13 @@ function executarAnalise() {
 
     let melhor = { nome: "Sem valor", ev: 0, odd: 0, stake: 0, prob: 0 };
 
-    // 🎯 HIERARQUIA
-
-    // 1️⃣ PRIORIDADE 1X2 (Casa / Fora)
+    // 🎯 ==========================
+    // 1️⃣ CASA / FORA (PRIORIDADE)
+    // ==========================
     const fatorCasa = 1.05;
 
     let pri1x2 = evList
-        .filter(i => (i.nome === "Casa" || i.nome === "Fora"))
+        .filter(i => i.nome === "Casa" || i.nome === "Fora")
         .map(i => {
             let probAjustada = i.prob;
 
@@ -179,70 +179,48 @@ function executarAnalise() {
         .sort((a, b) => b.probAjustada - a.probAjustada)[0];
 
 
-    // 📊 OVER (mais realista e menos travado)
+    // 🎯 ==========================
+    // 2️⃣ BTTS (52% a 60%)
+    // ==========================
+    let priBTTS = evList.find(i =>
+        i.nome === "BTTS" &&
+        i.ev >= 0.05 &&
+        i.prob >= 0.52 &&
+        i.prob <= 0.60
+    );
+
+
+    // 🎯 ==========================
+    // 3️⃣ OVER (>= 61%)
+    // ==========================
     let priOver = evList.find(i =>
         i.nome === "Over 2.5" &&
         i.ev >= 0.05 &&
-        i.prob >= 0.56 &&
-        (
-            totalLambda >= 3.0 ||
-            (totalLambda >= 2.4 && i.ev >= 0.06)
-        )
+        i.prob >= 0.61
     );
 
 
-    // 🚫 BTTS (agora mais flexível e realista)
-    const bloquearBTTS = ataqueCasa < 1.1 || ataqueFora < 1.1;
-
-    const jogoAberto = totalLambda >= 2.7; // ligeiramente mais permissivo
-    const ataquesFortes = ataqueCasa >= 1.3 && ataqueFora >= 1.3;
-
-    // probabilidade local (não altera base)
-    let bttsProb = pB;
-
-    if (ataquesFortes) bttsProb *= 1.08;
-    if (bloquearBTTS) bttsProb *= 0.85;
-    if (jogoAberto) bttsProb *= 1.03;
-
-    let priBTTS = (!bloquearBTTS && jogoAberto)
-        ? evList.find(i =>
-            i.nome === "BTTS" &&
-            i.ev >= 0.05 &&
-            bttsProb >= 0.52
-        )
-        : null;
-
-
-    // 4️⃣ UNDER (menos restritivo)
+    // 🎯 ==========================
+    // 4️⃣ UNDER (>= 68%)
+    // ==========================
     let priUnder = evList.find(i =>
         i.nome === "Under 2.5" &&
         i.ev >= 0.05 &&
-        i.prob >= 0.55 &&
-        totalLambda <= 2.7
+        i.prob >= 0.68
     );
 
 
-    // ⚖️ MARGEM ENTRE MERCADOS
-    const margem = 0.03;
-
-
-    // 🧠 DECISÃO FINAL (HIERARQUIA LIMPA E CONSISTENTE)
-
-    if (
-        pri1x2 &&
-        (!priOver || pri1x2.probAjustada >= priOver.prob) &&
-        (!priBTTS || pri1x2.probAjustada >= priBTTS.prob)
-    ) {
+    // 🧠 ==========================
+    // DECISÃO FINAL (HIERARQUIA)
+    // ==========================
+    if (pri1x2) {
         melhor = pri1x2;
-
-    } else if (
-        priOver &&
-        (!priBTTS || (priOver.ev * priOver.prob) >= (priBTTS.ev * priBTTS.prob))
-    ) {
-        melhor = priOver;
 
     } else if (priBTTS) {
         melhor = priBTTS;
+
+    } else if (priOver) {
+        melhor = priOver;
 
     } else if (priUnder) {
         melhor = priUnder;
