@@ -334,13 +334,16 @@ function salvarResultado() {
     // 📊 EDGE REAL
     const edge = (window.dadosTemp.ev || 0) * (probPrincipal / 100);
 
-    // 🧠 CLASSIFICAÇÃO
+    // 🧠 CLASSIFICAÇÃO (ÚNICA E CORRETA)
     let nivel = "🔴 RISCO";
+    let cor = "#c62828";
 
     if (edge >= 0.04) {
         nivel = "🟢 VALOR";
+        cor = "#2e7d32";
     } else if (edge >= 0.02) {
         nivel = "🟡 NEUTRO";
+        cor = "#f9a825";
     }
 
     try {
@@ -348,9 +351,9 @@ function salvarResultado() {
 
         window.dadosTemp.data = new Date().toLocaleString('pt-BR');
 
-        // 🔥 adiciona classificação
         window.dadosTemp.nivel = nivel;
         window.dadosTemp.edge = edge;
+        window.dadosTemp.cor = cor; // 🔥 IMPORTANTE
 
         historico.unshift(window.dadosTemp);
 
@@ -389,39 +392,39 @@ function renderizarTabela() {
         const corLucro = lucro > 0 ? "green" : (lucro < 0 ? "red" : "black");
 
         return `
-        <tr>
-            <td>${j.time}</td>
-            <td>${Number(j.ev).toFixed(2)}</td>
-            <td>${Number(j.odd).toFixed(2)}</td>
-            <td>${Number(j.stake).toFixed(1)}%</td>
-            <td>${Number(j.pC).toFixed(1)}%</td>
-            <td>${Number(j.pE).toFixed(1)}%</td>
-            <td>${Number(j.pF).toFixed(1)}%</td>
-            <td>${Number(j.pB).toFixed(1)}%</td>
-            <td>${Number(j.pO).toFixed(1)}%</td>
-            <td>${Number(j.pU || 0).toFixed(1)}%</td>
-            <td>${Number(j.expGols).toFixed(2)}</td>
-            <td><b>${j.principal}</b></td>
+<tr style="border-left:5px solid ${j.cor || '#ccc'}; background:${j.cor ? j.cor + '15' : 'transparent'};">
+    <td>${j.time}</td>
+    <td>${Number(j.ev).toFixed(2)}</td>
+    <td>${Number(j.odd).toFixed(2)}</td>
+    <td>${Number(j.stake).toFixed(1)}%</td>
+    <td>${Number(j.pC).toFixed(1)}%</td>
+    <td>${Number(j.pE).toFixed(1)}%</td>
+    <td>${Number(j.pF).toFixed(1)}%</td>
+    <td>${Number(j.pB).toFixed(1)}%</td>
+    <td>${Number(j.pO).toFixed(1)}%</td>
+    <td>${Number(j.pU || 0).toFixed(1)}%</td>
+    <td>${Number(j.expGols).toFixed(2)}</td>
+    <td><b>${j.principal}</b></td>
 
-            <td>
-                ${j.golsC !== undefined
+    <td>
+        ${j.golsC !== undefined
                 ? `${j.golsC} x ${j.golsF}`
                 : `
-                    <input id="resC-${i}" type="number" style="width:40px;">
-                    x
-                    <input id="resF-${i}" type="number" style="width:40px;">
-                    <button onclick="validarPlacar(${i})">✔</button>
-                `}
-            </td>
+            <input id="resC-${i}" type="number" style="width:40px;">
+            x
+            <input id="resF-${i}" type="number" style="width:40px;">
+            <button onclick="validarPlacar(${i})">✔</button>
+        `}
+    </td>
 
-            <td style="color: ${corLucro}; font-weight: bold;">
-                R$ ${lucro.toFixed(2)}
-            </td>
+    <td style="color: ${corLucro}; font-weight: bold;">
+        R$ ${lucro.toFixed(2)}
+    </td>
 
-            <td>
-                <button onclick="excluir(${i})">🗑️</button>
-            </td>
-        </tr>`;
+    <td>
+        <button onclick="excluir(${i})">🗑️</button>
+    </td>
+</tr>`;
     }).join('');
 
     const saldoAtual = bancaBase + lucroTotal;
