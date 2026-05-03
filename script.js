@@ -34,8 +34,8 @@ function executarAnalise() {
 
     // 🔒 SUAVIZAÇÃO
     const suavizar = (valor, mediaLiga) => {
-        const pesoForma = 0.30;
-        const pesoLiga = 0.70;
+        const pesoForma = 0.40;
+        const pesoLiga = 0.60;
         return Math.max((valor * pesoForma) + (mediaLiga * pesoLiga), mediaLiga * 0.25);
     };
 
@@ -103,8 +103,6 @@ function executarAnalise() {
 
     pC /= soma; pF /= soma; pE /= soma;
     pO /= soma; pU /= soma; pB /= soma;
-    let soma1x2 = pC + pE + pF;
-    pC /= soma1x2; pE /= soma1x2; pF /= soma1x2;
 
     // 💰 EV e KELLY
     let evC = (pC * mercado.casa) - 1;
@@ -140,17 +138,34 @@ function executarAnalise() {
     ];
 
     // 🔥 AJUSTE EV (mais inteligente)
+    // 🔥 AJUSTE EV INTELIGENTE
     evList.forEach(i => {
+        const totalLambda = lambdaCasa + lambdaFora;
+        const disparidade = Math.abs(lambdaCasa - lambdaFora);
+
         if (i.nome === "Over 2.5" || i.nome === "BTTS") {
-            if ((lambdaCasa + lambdaFora) < 2.6) {
-                i.ev *= 0.90; // penaliza jogo fechado
+            // 1️⃣ Penalização por volume de gols (Progressiva)
+            if (totalLambda < 2.6) {
+                i.ev *= 0.85 + (totalLambda * 0.03); // Quanto menos gols, mais penaliza
             } else {
-                i.ev *= 0.97; // leve ajuste padrão
+                i.ev *= 0.97; // Ajuste padrão de segurança
             }
+
+            // 2️⃣ Filtro de Disparidade para BTTS
+            // Se um time projeta muito mais que o outro, o BTTS fica perigoso
+            if (i.nome === "BTTS" && disparidade > 1.2) {
+                i.ev *= 0.85; // Penaliza em 15% se houver um super favorito
+            }
+        }
+
+        // 3️⃣ Ajuste de Under (Oportunidade em jogos truncados)
+        if (i.nome === "Under 2.5" && totalLambda < 2.3) {
+            i.ev *= 1.03; // Leve bônus para o Under em cenários de poucos gols
         }
     });
 
     let melhor = { nome: "Sem valor", ev: 0, odd: 0, stake: 0, prob: 0 };
+    const disparidade = Math.abs(lambdaCasa - lambdaFora); // 👈 Importante para os filtros abaixo
 
     // ==========================
     // 1️⃣ CASA / FORA (PRIORIDADE)
@@ -161,16 +176,11 @@ function executarAnalise() {
         .filter(i => i.nome === "Casa" || i.nome === "Fora")
         .map(i => {
             let probAjustada = i.prob;
-
-            if (i.nome === "Casa") {
-                probAjustada *= fatorCasa;
-            }
-
+            if (i.nome === "Casa") probAjustada *= fatorCasa;
             return { ...i, probAjustada };
         })
         .filter(i => {
             const edge = i.ev * i.probAjustada;
-
             return (
                 edge >= 0.02 &&
                 i.probAjustada >= 0.42 &&
@@ -181,14 +191,12 @@ function executarAnalise() {
 
     if (pri1x2) {
         melhor = pri1x2;
-
     } else {
 
         // ==========================
         // 2️⃣ OVER (FILTRO PRÓPRIO)
         // ==========================
         let priOver = null;
-
         if (totalGols >= mediaLiga + 0.3) {
             priOver = evList.find(i =>
                 i.nome === "Over 2.5" &&
@@ -199,18 +207,17 @@ function executarAnalise() {
 
         if (priOver) {
             melhor = priOver;
-
         } else {
 
             // ==========================
             // 3️⃣ BTTS (FILTRO PRÓPRIO)
             // ==========================
             let priBTTS = null;
-
-            if (totalGols >= 2.4 && totalGols < 3.1) {
+            // 💡 Adicionada trava de disparidade: se um time for 1.2 gols melhor que o outro, pula BTTS
+            if (totalGols >= 2.4 && totalGols < 3.1 && disparidade < 1.2) {
                 priBTTS = evList.find(i =>
                     i.nome === "BTTS" &&
-                    i.ev >= 0.02 &&
+                    i.ev >= 0.03 && // Exigência levemente maior para compensar variância
                     i.prob >= 0.52 &&
                     i.prob <= 0.66
                 );
@@ -218,7 +225,6 @@ function executarAnalise() {
 
             if (priBTTS) {
                 melhor = priBTTS;
-
             } else {
 
                 // ==========================
@@ -236,7 +242,6 @@ function executarAnalise() {
             }
         }
     }
-
     exibirResultados(pC * 100, pE * 100, pF * 100, pB * 100, pO * 100, pU * 100, evC, evE, evF, evB, evO, evU, kelly(pC, mercado.casa), kelly(pE, mercado.empate), kelly(pF, mercado.fora), kelly(pB, mercado.btts), kelly(pO, mercado.over), kelly(pU, mercado.under), lambdaCasa + lambdaFora, melhor);
 }
 
@@ -492,6 +497,7 @@ function exportarCSV() {
         csv += `${j.pF};`;
         csv += `${j.pB};`;
         csv += `${j.pO};`;
+        csv += `${j.pU};`;
         csv += `${j.expGols};`;
         csv += `${j.principal};`;
         csv += `${placar};`;
