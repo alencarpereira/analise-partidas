@@ -180,13 +180,16 @@ function executarAnalise() {
             return { ...i, probAjustada };
         })
         .filter(i => {
+            // Calculamos o edge multiplicando o EV pela confiança (prob)
             const edge = i.ev * i.probAjustada;
+
             return (
-                edge >= 0.02 &&
-                i.probAjustada >= 0.42 &&
-                i.probAjustada <= 0.70
+                edge >= 0.01 &&           // 🟢 Baixamos para 1% para não ignorar valor em ligas difíceis
+                i.probAjustada >= 0.40 && // 🟡 Piso de 40% (odds até @2.50)
+                i.probAjustada <= 0.75    // 🔴 Teto de 75% (odds acima de @1.33)
             );
         })
+
         .sort((a, b) => b.probAjustada - a.probAjustada)[0];
 
     if (pri1x2) {
