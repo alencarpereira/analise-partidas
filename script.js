@@ -1,5 +1,9 @@
 function executarAnalise() {
-    const getVal = id => parseFloat(document.getElementById(id)?.value) || 0;
+    const getVal = id => {
+        const val = document.getElementById(id)?.value;
+        if (!val) return 0;
+        return parseFloat(val.replace(',', '.')) || 0;
+    };
 
     // 🎯 CONFIGURAÇÕES DE ENTRADA
     const motivacaoEl = document.getElementById('motivacao');
@@ -20,12 +24,18 @@ function executarAnalise() {
     const defesaFora = getVal('defesaFora');
     const mediaLiga = getVal('mediaLiga') || 2.5;
 
-    // 📊 CÁLCULO DE FORMA
+    // 📊 FORMA
     const media = id => {
         const el = document.getElementById(id);
         if (!el || !el.value) return 0;
-        const v = el.value.split(',').map(Number);
-        if (v.length < 5) return 0;
+
+        const v = el.value
+            .split(',')
+            .map(x => parseFloat(x.trim()))
+            .filter(x => !isNaN(x));
+
+        if (v.length !== 5) return 0;
+
         return (v[0] + v[1] + v[2] + v[3] * 1.3 + v[4] * 1.3) / 5.6;
     };
 
@@ -34,9 +44,7 @@ function executarAnalise() {
 
     // 🔒 SUAVIZAÇÃO
     const suavizar = (valor, mediaLiga) => {
-        const pesoForma = 0.30;
-        const pesoLiga = 0.70;
-        return Math.max((valor * pesoForma) + (mediaLiga * pesoLiga), mediaLiga * 0.25);
+        return Math.max((valor * 0.40) + (mediaLiga * 0.60), mediaLiga * 0.25);
     };
 
     const ataqueCasaSafe = suavizar(ataqueCasa, mediaLiga);
@@ -44,17 +52,17 @@ function executarAnalise() {
     const ataqueForaSafe = suavizar(ataqueFora, mediaLiga);
     const defesaForaSafe = suavizar(defesaFora, mediaLiga);
 
-    // 🎯 CÁLCULO DAS LAMBDAS BASE
+    // 🎯 LAMBDAS
     let lambdaCasa = (ataqueCasaSafe / mediaLiga) * ((defesaForaSafe / mediaLiga) * 0.95) * mediaLiga;
     let lambdaFora = (ataqueForaSafe / mediaLiga) * ((defesaCasaSafe / mediaLiga) * 0.95) * mediaLiga;
 
     if (formaCasa > 0) lambdaCasa *= (1 + ((formaCasa - mediaLiga) / mediaLiga) * 0.08);
     if (formaFora > 0) lambdaFora *= (1 + ((formaFora - mediaLiga) / mediaLiga) * 0.08);
 
-    // 🚧 LIMITADOR DINÂMICO
+    // 🚧 LIMITADOR
     let totalPre = lambdaCasa + lambdaFora;
-    let minGols = mediaLiga * 0.85;
-    let maxGols = mediaLiga * 1.25;
+    let minGols = mediaLiga * 0.65;
+    let maxGols = mediaLiga * 1.50;
 
     if (totalPre > maxGols) {
         const f = maxGols / totalPre;
@@ -67,49 +75,100 @@ function executarAnalise() {
         lambdaFora *= f;
     }
 
-    // 🏠 FATOR CASA (equilibrado 🔥)
-    lambdaCasa *= 1.06;
-    lambdaFora *= 0.94;
+    // 🏠 CASA
+    const fatorCasa = getVal('fatorCasa') || 1.05;
+    lambdaCasa *= fatorCasa;
+    lambdaFora *= (2 - fatorCasa);
 
-    // 🚀 APLICAÇÃO DA MOTIVAÇÃO
+    // 🚀 MOTIVAÇÃO
     lambdaCasa *= motivacao;
     lambdaFora *= motivacao;
 
-    // 🔧 AJUSTE FINAL
+    // 🔧 FINAL
     lambdaCasa *= 1.01;
     lambdaFora *= 1.01;
 
-    // 📊 TOTAL DE GOLS ESPERADOS
-    let totalLambda = lambdaCasa + lambdaFora;
-    let totalGols = lambdaCasa + lambdaFora;
+    const totalGolsPartida = lambdaCasa + lambdaFora;
 
     // 📐 POISSON
     const fatorial = n => { let r = 1; for (let i = 2; i <= n; i++) r *= i; return r; };
     const poisson = (l, k) => (Math.exp(-l) * Math.pow(l, k)) / fatorial(k);
 
     let pC = 0, pF = 0, pE = 0, pO = 0, pB = 0, pU = 0, soma = 0;
-    for (let i = 0; i < 8; i++) {
-        for (let j = 0; j < 8; j++) {
-            const p = poisson(lambdaCasa, i) * poisson(lambdaFora, j);
+    const maxIter = Math.min(12, Math.ceil(totalGolsPartida + 5));
+
+    const poissonCasa = [];
+    const poissonFora = [];
+
+    for (let k = 0; k < maxIter; k++) {
+        poissonCasa[k] = poisson(lambdaCasa, k);
+        poissonFora[k] = poisson(lambdaFora, k);
+    }
+
+    for (let i = 0; i < maxIter; i++) {
+        for (let j = 0; j < maxIter; j++) {
+
+            const p = poissonCasa[i] * poissonFora[j];
             soma += p;
+
             if (i > j) pC += p;
             else if (i < j) pF += p;
             else pE += p;
-            if (i + j >= 3) pO += p;
-            if (i + j <= 2) pU += p;
+
+            const total = i + j;
+
+            if (total >= 3) pO += p;
+            else pU += p;
+
             if (i > 0 && j > 0) pB += p;
         }
     }
 
     pC /= soma; pF /= soma; pE /= soma;
     pO /= soma; pU /= soma; pB /= soma;
-    let soma1x2 = pC + pE + pF;
-    pC /= soma1x2; pE /= soma1x2; pF /= soma1x2;
 
-    // 💰 EV e KELLY
+    // 🔥 BTTS AJUSTE
+    const intensidade = (ataqueCasaSafe + ataqueForaSafe) / 2;
+    const fragilidade = (defesaCasaSafe + defesaForaSafe) / 2;
+
+    const pZeroCasa = poissonCasa[0];
+    const pZeroFora = poissonFora[0];
+
+    let pB_exato = 1 - (pZeroCasa + pZeroFora - (pZeroCasa * pZeroFora));
+    pB = (pB * 0.75) + (pB_exato * 0.25);
+
+    let boostBTTS = 1;
+
+    if (totalGolsPartida >= 2.6) boostBTTS += 0.03;
+    if (totalGolsPartida >= 3.0) boostBTTS += 0.03;
+
+    if (intensidade > 1.3) boostBTTS += 0.02;
+    if (fragilidade > 1.2) boostBTTS += 0.02;
+
+    boostBTTS = Math.min(boostBTTS, 1.10);
+
+    pB = Math.max(0, Math.min(pB, 0.85));
+    pB = Math.min(pB, pO * 1.05);
+
+    const somaFinal = pC + pE + pF;
+    if (somaFinal > 0) {
+        pC /= somaFinal;
+        pE /= somaFinal;
+        pF /= somaFinal;
+    }
+
+    // 💰 EV
     let evC = (pC * mercado.casa) - 1;
     let evE = (pE * mercado.empate) - 1;
     let evF = (pF * mercado.fora) - 1;
+
+    if (totalGolsPartida < 2.2) {
+        pB *= 0.92;
+        if (totalGolsPartida < 1.8) pB *= 0.90;
+    } else {
+        pB *= boostBTTS;
+    }
+
     let evB = (pB * mercado.btts) - 1;
     let evO = (pO * mercado.over) - 1;
     let evU = (pU * mercado.under) - 1;
@@ -120,125 +179,33 @@ function executarAnalise() {
         const b = o - 1;
         const k = ((b * p) - (1 - p)) / b;
 
-        if (k <= 0) return 0;
+        if (k <= 0.02 || p < 0.52) return 0;
 
         let stake = k * 0.25 * 100;
 
-        // 🔥 CONTROLE POR ODD
-        if (o >= 3.0) stake *= 0.5;   // corta pela metade
-        if (o >= 4.0) stake *= 0.5;   // corta mais ainda
+        stake *= (0.8 + (p - 0.5));
+
+        if (o >= 4.0) stake *= 0.4;
+        else if (o >= 3.0) stake *= 0.6;
 
         return Math.min(stake, 5);
     };
-    let evList = [
-        { nome: "Casa", ev: evC, prob: pC, odd: mercado.casa, stake: kelly(pC, mercado.casa) },
-        { nome: "Empate", ev: evE, prob: pE, odd: mercado.empate, stake: kelly(pE, mercado.empate) },
-        { nome: "Fora", ev: evF, prob: pF, odd: mercado.fora, stake: kelly(pF, mercado.fora) },
-        { nome: "BTTS", ev: evB, prob: pB, odd: mercado.btts, stake: kelly(pB, mercado.btts) },
-        { nome: "Over 2.5", ev: evO, prob: pO, odd: mercado.over, stake: kelly(pO, mercado.over) },
-        { nome: "Under 2.5", ev: evU, prob: pU, odd: mercado.under, stake: kelly(pU, mercado.under) }
-    ];
 
-    // 🔥 AJUSTE EV (mais inteligente)
-    evList.forEach(i => {
-        if (i.nome === "Over 2.5" || i.nome === "BTTS") {
-            if ((lambdaCasa + lambdaFora) < 2.6) {
-                i.ev *= 0.90; // penaliza jogo fechado
-            } else {
-                i.ev *= 0.97; // leve ajuste padrão
-            }
-        }
-    });
-
-    let melhor = { nome: "Sem valor", ev: 0, odd: 0, stake: 0, prob: 0 };
-
-    // ==========================
-    // 1️⃣ CASA / FORA (PRIORIDADE)
-    // ==========================
-    const fatorCasa = 1.05;
-
-    let pri1x2 = evList
-        .filter(i => i.nome === "Casa" || i.nome === "Fora")
-        .map(i => {
-            let probAjustada = i.prob;
-
-            if (i.nome === "Casa") {
-                probAjustada *= fatorCasa;
-            }
-
-            return { ...i, probAjustada };
-        })
-        .filter(i => {
-            const edge = i.ev * i.probAjustada;
-
-            return (
-                edge >= 0.02 &&
-                i.probAjustada >= 0.42 &&
-                i.probAjustada <= 0.70
-            );
-        })
-        .sort((a, b) => b.probAjustada - a.probAjustada)[0];
-
-    if (pri1x2) {
-        melhor = pri1x2;
-
-    } else {
-
-        // ==========================
-        // 2️⃣ OVER (FILTRO PRÓPRIO)
-        // ==========================
-        let priOver = null;
-
-        if (totalGols >= mediaLiga + 0.3) {
-            priOver = evList.find(i =>
-                i.nome === "Over 2.5" &&
-                i.ev >= 0.03 &&
-                i.prob >= 0.60
-            );
-        }
-
-        if (priOver) {
-            melhor = priOver;
-
-        } else {
-
-            // ==========================
-            // 3️⃣ BTTS (FILTRO PRÓPRIO)
-            // ==========================
-            let priBTTS = null;
-
-            if (totalGols >= 2.4 && totalGols < 3.1) {
-                priBTTS = evList.find(i =>
-                    i.nome === "BTTS" &&
-                    i.ev >= 0.02 &&
-                    i.prob >= 0.52 &&
-                    i.prob <= 0.66
-                );
-            }
-
-            if (priBTTS) {
-                melhor = priBTTS;
-
-            } else {
-
-                // ==========================
-                // 4️⃣ UNDER (FILTRO PRÓPRIO)
-                // ==========================
-                let priUnder = evList.find(i =>
-                    i.nome === "Under 2.5" &&
-                    i.ev >= 0.03 &&
-                    i.prob >= 0.55
-                );
-
-                if (priUnder) {
-                    melhor = priUnder;
-                }
-            }
-        }
-    }
-
-    exibirResultados(pC * 100, pE * 100, pF * 100, pB * 100, pO * 100, pU * 100, evC, evE, evF, evB, evO, evU, kelly(pC, mercado.casa), kelly(pE, mercado.empate), kelly(pF, mercado.fora), kelly(pB, mercado.btts), kelly(pO, mercado.over), kelly(pU, mercado.under), lambdaCasa + lambdaFora, melhor);
+    exibirResultados(
+        pC * 100, pE * 100, pF * 100,
+        pB * 100, pO * 100, pU * 100,
+        evC, evE, evF, evB, evO, evU,
+        kelly(pC, mercado.casa),
+        kelly(pE, mercado.empate),
+        kelly(pF, mercado.fora),
+        kelly(pB, mercado.btts),
+        kelly(pO, mercado.over),
+        kelly(pU, mercado.under),
+        totalGolsPartida,
+        { nome: "Sem valor" }
+    );
 }
+
 
 
 function exibirResultados(pC, pE, pF, pBTTS, pOver, pUnder, evC, evE, evF, evB, evO, evU, kC, kE, kF, kB, kO, kU, totalGols, melhor) {
@@ -589,6 +556,7 @@ function preencherExemplo() {
 
     console.log("✅ Exemplo carregado");
 }
+
 
 
 
