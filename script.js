@@ -171,13 +171,28 @@ function executarAnalise() {
     // 1️⃣ CASA / FORA (PRIORIDADE)
     // ==========================
     const fatorCasa = 1.05;
-
     let pri1x2 = evList
         .filter(i => i.nome === "Casa" || i.nome === "Fora")
         .map(i => {
+
             let probAjustada = i.prob;
-            if (i.nome === "Casa") probAjustada *= fatorCasa;
-            return { ...i, probAjustada };
+
+            if (i.nome === "Casa") {
+                probAjustada *= fatorCasa;
+            }
+
+            // 🔥 Penalização de zebra extrema
+            let evAjustado = i.ev;
+
+            if (i.odd >= 4.5 && i.prob < 0.40) {
+                evAjustado *= 0.50;
+            }
+
+            return {
+                ...i,
+                probAjustada,
+                ev: evAjustado
+            };
         })
         .filter(i => {
             // Calculamos o edge multiplicando o EV pela confiança (prob)
@@ -200,7 +215,7 @@ function executarAnalise() {
         // 2️⃣ OVER (FILTRO PRÓPRIO)
         // ==========================
         let priOver = null;
-        if (totalGols >= mediaLiga + 0.3) {
+        if (totalGols >= mediaLiga + 0.3 && disparidade <= 1.4) {
             priOver = evList.find(i =>
                 i.nome === "Over 2.5" &&
                 i.ev >= 0.03 &&
@@ -217,13 +232,16 @@ function executarAnalise() {
             // ==========================
             let priBTTS = null;
             // 💡 Adicionada trava de disparidade: se um time for 1.2 gols melhor que o outro, pula BTTS
-            if (totalGols >= 2.4 && totalGols < 3.1 && disparidade < 1.2) {
+            if (totalGols >= 2.4 && totalGols < 3.1 && disparidade < 0.9 && lambdaCasa >= 1.15 &&
+                lambdaFora >= 1.05) {
                 priBTTS = evList.find(i =>
                     i.nome === "BTTS" &&
                     i.ev >= 0.03 && // Exigência levemente maior para compensar variância
-                    i.prob >= 0.52 &&
+                    i.prob >= 0.58 &&
                     i.prob <= 0.66
                 );
+
+
             }
 
             if (priBTTS) {
