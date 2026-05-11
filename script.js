@@ -4,6 +4,7 @@ function executarAnalise() {
     // 🎯 CONFIGURAÇÕES DE ENTRADA
     const motivacaoEl = document.getElementById('motivacao');
     let motivacao = parseFloat(motivacaoEl?.value) || 1;
+    const modoMataMata = motivacao <= 0.82;
 
     const mercado = {
         casa: getVal('oddCasa'),
@@ -209,7 +210,8 @@ function executarAnalise() {
 
     if (pri1x2) {
         melhor = pri1x2;
-    } else {
+    }
+    else if (!modoMataMata) {
 
         // ==========================
         // 2️⃣ OVER (FILTRO PRÓPRIO)
