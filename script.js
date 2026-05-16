@@ -5,6 +5,8 @@ function executarAnalise() {
     const motivacaoEl = document.getElementById('motivacao');
     let motivacao = parseFloat(motivacaoEl?.value) || 1;
     const modoMataMata = motivacao <= 0.82;
+    const modoContrario =
+        document.getElementById('modoContrario')?.checked;
 
     const mercado = {
         casa: getVal('oddCasa'),
@@ -12,6 +14,7 @@ function executarAnalise() {
         fora: getVal('oddFora'),
         over: getVal('oddOver'),
         btts: getVal('oddBTTS'),
+        bttsNao: getVal('oddBTTSNao'),
         under: getVal('oddUnder')
     };
 
@@ -112,8 +115,12 @@ function executarAnalise() {
     let evB = (pB * mercado.btts) - 1;
     let evO = (pO * mercado.over) - 1;
     let evU = (pU * mercado.under) - 1;
+    // 🔄 BTTS NÃO
+    let pBN = 1 - pB;
+    let evBN = (pBN * mercado.bttsNao) - 1;
 
     const kelly = (p, o) => {
+
         if (!o || o <= 1) return 0;
 
         const b = o - 1;
@@ -124,8 +131,8 @@ function executarAnalise() {
         let stake = k * 0.25 * 100;
 
         // 🔥 CONTROLE POR ODD
-        if (o >= 3.0) stake *= 0.5;   // corta pela metade
-        if (o >= 4.0) stake *= 0.5;   // corta mais ainda
+        if (o >= 3.0) stake *= 0.5;
+        if (o >= 4.0) stake *= 0.5;
 
         return Math.min(stake, 5);
     };
@@ -135,6 +142,13 @@ function executarAnalise() {
         { nome: "Fora", ev: evF, prob: pF, odd: mercado.fora, stake: kelly(pF, mercado.fora) },
         { nome: "BTTS", ev: evB, prob: pB, odd: mercado.btts, stake: kelly(pB, mercado.btts) },
         { nome: "Over 2.5", ev: evO, prob: pO, odd: mercado.over, stake: kelly(pO, mercado.over) },
+        {
+            nome: "BTTS NÃO",
+            ev: evBN,
+            prob: pBN,
+            odd: mercado.bttsNao,
+            stake: kelly(pBN, mercado.bttsNao)
+        },
         { nome: "Under 2.5", ev: evU, prob: pU, odd: mercado.under, stake: kelly(pU, mercado.under) }
     ];
 
@@ -265,8 +279,65 @@ function executarAnalise() {
             }
         }
     }
+    // 🔄 MODO CONTRÁRIO
+    if (modoContrario && melhor.nome !== "Sem valor") {
+
+        const nomeInvertido =
+            inverterMercado(melhor.nome);
+
+        const apostaInvertida =
+            evList.find(i => i.nome === nomeInvertido);
+
+        // ✅ usa mercado invertido
+        if (apostaInvertida) {
+
+            melhor = {
+                ...apostaInvertida
+            };
+
+        } else {
+
+            melhor = {
+                ...melhor,
+                nome: nomeInvertido
+            };
+        }
+
+        // 🔥 stake fixa
+        melhor.stake = 1;
+
+        // 🔥 flag visual
+        melhor.modoContrario = true;
+    }
+
     exibirResultados(pC * 100, pE * 100, pF * 100, pB * 100, pO * 100, pU * 100, evC, evE, evF, evB, evO, evU, kelly(pC, mercado.casa), kelly(pE, mercado.empate), kelly(pF, mercado.fora), kelly(pB, mercado.btts), kelly(pO, mercado.over), kelly(pU, mercado.under), lambdaCasa + lambdaFora, melhor);
+
 }
+
+function inverterMercado(nome) {
+
+    switch (nome) {
+
+        case "Casa":
+            return "Fora";
+
+        case "Fora":
+            return "Casa";
+
+        case "Over 2.5":
+            return "Under 2.5";
+
+        case "Under 2.5":
+            return "Over 2.5";
+
+        case "BTTS":
+            return "BTTS NÃO";
+
+        default:
+            return nome;
+    }
+}
+
 
 
 function exibirResultados(pC, pE, pF, pBTTS, pOver, pUnder, evC, evE, evF, evB, evO, evU, kC, kE, kF, kB, kO, kU, totalGols, melhor) {
@@ -290,39 +361,123 @@ function exibirResultados(pC, pE, pF, pBTTS, pOver, pUnder, evC, evE, evF, evB, 
                 <p>🔢 Gols esperados: <b>${totalGols.toFixed(2)}</b></p>`;
 
     if (!melhor.nome || melhor.nome === "Sem valor") {
-        html += `<div style="margin-top:15px;padding:12px;background:#ffebee;border-radius:8px;border-left:5px solid #c62828;">⚠️ Sem valor matemático</div>`;
-        window.dadosTemp = null;
-    } else {
-        // Dentro da função exibirResultados:
-        // Dentro de exibirResultados, logo antes do cartão verde:
-        const ehPri1x2 = (melhor.nome === "Casa" || melhor.nome === "Fora");
-
-        const ehPriOver = (melhor.nome === "Over 2.5") && melhor.prob >= 0.55;
-
-        const ehPriBTTS = (melhor.nome === "BTTS") && melhor.prob >= 0.55;
-
-        const etiqueta = ehPri1x2 ? "🎯 ODD DE VALOR" :
-            (ehPriOver ? "📈 PRIORIDADE OVER" :
-                (ehPriBTTS ? "⚽ PRIORIDADE BTTS" : "💰 MAIOR EV"));
-
-
 
         html += `
-        <div style="margin-top:15px;padding:12px;background:#e8f5e9;border-radius:8px;border-left:5px solid #2e7d32;">
-            <small style="background:#1a237e;color:white;padding:2px 5px;border-radius:3px">${etiqueta}</small><br>
-            <b>Aposta:</b> ${melhor.nome}<br>
-            <b>EV:</b> ${melhor.ev.toFixed(2)} | <b>Stake:</b> ${melhor.stake.toFixed(1)}%
-        </div>`;
+    <div style="margin-top:15px;padding:12px;background:#ffebee;border-radius:8px;border-left:5px solid #c62828;">
+        ⚠️ Sem valor matemático
+    </div>`;
 
+        window.dadosTemp = null;
+
+    } else {
+
+        // 🔄 AVISO VISUAL
+        if (melhor.modoContrario) {
+
+            html += `
+        <div style="
+            margin-bottom:10px;
+            padding:8px;
+            background:#fff3e0;
+            border-left:5px solid #ef6c00;
+            border-radius:5px;
+            font-weight:bold;
+        ">
+            🔄 MODO CONTRÁRIO ATIVO
+        </div>`;
+        }
+
+        const ehPri1x2 =
+            (melhor.nome === "Casa" || melhor.nome === "Fora");
+
+        const ehPriOver =
+            (melhor.nome === "Over 2.5") && melhor.prob >= 0.55;
+
+        const ehPriBTTS =
+            (melhor.nome === "BTTS") && melhor.prob >= 0.55;
+
+        const etiqueta = ehPri1x2
+            ? "🎯 ODD DE VALOR"
+            : (ehPriOver
+                ? "📈 PRIORIDADE OVER"
+                : (ehPriBTTS
+                    ? "⚽ PRIORIDADE BTTS"
+                    : "💰 MAIOR EV"));
+
+        html += `
+    <div style="
+        margin-top:15px;
+        padding:12px;
+        background:#e8f5e9;
+        border-radius:8px;
+        border-left:5px solid #2e7d32;
+    ">
+
+        <small style="
+            background:#1a237e;
+            color:white;
+            padding:2px 5px;
+            border-radius:3px
+        ">
+            ${etiqueta}
+        </small><br>
+
+        <b>Aposta:</b> ${melhor.nome}<br>
+
+        <b>EV:</b> ${melhor.ev.toFixed(2)}
+        |
+ <b>Stake:</b> ${melhor.modoContrario
+                ? "1.0"
+                : melhor.stake.toFixed(1)
+            }%
+    </div>`;
+
+
+        if (melhor.modoContrario) {
+            melhor.stake = 1;
+        }
         window.dadosTemp = {
-            time: document.getElementById('nomeJogo')?.value || "Jogo",
-            ev: melhor.ev, odd: melhor.odd, stake: melhor.stake,
-            pC, pE, pF, pB: pBTTS, pO: pOver, pU: pUnder,
-            expGols: totalGols, principal: melhor.nome, lucro: 0
+
+            time:
+                document.getElementById('nomeJogo')?.value || "Jogo",
+
+            ev: melhor.ev,
+            odd: melhor.odd,
+            stake: melhor.stake,
+
+            pC,
+            pE,
+            pF,
+
+            pB: pBTTS,
+            pBN: (100 - pBTTS),
+            pO: pOver,
+            pU: pUnder,
+
+            expGols: totalGols,
+
+            principal: melhor.nome,
+
+            lucro: 0
         };
     }
 
-    html += `<button onclick="${window.dadosTemp ? 'salvarResultado()' : 'alert(\'Sem valor\')'}" style="margin-top:15px;width:100%;padding:12px;background:#1a237e;color:#fff;border:none;border-radius:8px;font-weight:bold;cursor:pointer;">💾 SALVAR NA TABELA</button>`;
+    html += `
+<button onclick="${window.dadosTemp ? 'salvarResultado()' : 'alert(\'Sem valor\')'}"
+style="
+    margin-top:15px;
+    width:100%;
+    padding:12px;
+    background:#1a237e;
+    color:#fff;
+    border:none;
+    border-radius:8px;
+    font-weight:bold;
+    cursor:pointer;
+">
+    💾 SALVAR NA TABELA
+</button>`;
+
     painel.innerHTML = html;
 }
 
@@ -418,8 +573,9 @@ function renderizarTabela() {
     <td>${Number(j.pC).toFixed(1)}%</td>
     <td>${Number(j.pE).toFixed(1)}%</td>
     <td>${Number(j.pF).toFixed(1)}%</td>
-    <td>${Number(j.pB).toFixed(1)}%</td>
-    <td>${Number(j.pO).toFixed(1)}%</td>
+<td>${Number(j.pB).toFixed(1)}%</td>
+<td>${Number(j.pBN || 0).toFixed(1)}%</td>
+<td>${Number(j.pO).toFixed(1)}%</td>
     <td>${Number(j.pU || 0).toFixed(1)}%</td>
     <td>${Number(j.expGols).toFixed(2)}</td>
     <td><b>${j.principal}</b></td>
@@ -479,6 +635,7 @@ function validarPlacar(index) {
     if (aposta === "Over 2.5" && total > 2) green = true;
     else if (aposta === "Under 2.5" && total < 3) green = true; // <--- Importante para o Under aparecer
     else if (aposta === "BTTS" && gC > 0 && gF > 0) green = true;
+    else if (aposta === "BTTS NÃO" && (gC === 0 || gF === 0)) green = true;
     else if (aposta === "Casa" && gC > gF) green = true;
     else if (aposta === "Fora" && gF > gC) green = true;
     else if (aposta === "Empate" && gC === gF) green = true;
@@ -519,6 +676,7 @@ function exportarCSV() {
         csv += `${j.pE};`;
         csv += `${j.pF};`;
         csv += `${j.pB};`;
+        csv += `${j.pBN || 0};`;
         csv += `${j.pO};`;
         csv += `${j.pU};`;
         csv += `${j.expGols};`;
@@ -591,6 +749,7 @@ function preencherExemplo() {
     set('oddFora', "3.80");
     set('oddOver', "1.90");
     set('oddBTTS', "1.72");
+    set('oddBTTSNao', "2.05");
     set('oddUnder', "1.90"); // ✅ faltava esse
 
     // 🏠 CASA

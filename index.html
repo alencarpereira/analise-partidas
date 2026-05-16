@@ -120,6 +120,10 @@
                             placeholder="1.95"></div>
                     <div class="input-group"><label>BTTS (Sim)</label><input type="number" id="oddBTTS" step="0.01"
                             placeholder="1.80"></div>
+                    <div class="input-group">
+                        <label>BTTS (Não)</label>
+                        <input type="number" id="oddBTTSNao" step="0.01" placeholder="2.00">
+                    </div>
                     <div class="input-group"><label>Under 2.5</label><input type="number" id="oddUnder" step="0.01"
                             placeholder="1.85"></div>
                 </div>
@@ -186,6 +190,14 @@
                         <option value="1.12">Amistoso (1.12)</option>
                     </select>
                 </div>
+
+                <div class="input-group" style="margin-top:10px;">
+                    <label style="cursor:pointer;">
+                        <input type="checkbox" id="modoContrario">
+                        🔄 Modo Contrário (apostar contra o modelo)
+                    </label>
+                </div>
+
                 <div class="input-group">
                     <label>Nome do Confronto</label>
                     <input type="text" id="nomeJogo" placeholder="Ex: Real Madrid x Barcelona">
@@ -327,6 +339,7 @@
                     <th>X</th>
                     <th>2</th>
                     <th>BTTS</th>
+                    <th>BTTS NÃO</th>
                     <th>O2.5</th>
                     <th>U2.5</th> <!-- ADICIONE ESTA LINHA -->
                     <th>ExpG</th>
